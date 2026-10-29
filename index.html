@@ -47,7 +47,7 @@
     <h1 style="font-size:34px;margin-bottom:4px">Oficina do Zeca</h1>
     <p class="muted" style="margin-top:0">Entre para abrir a oficina.</p>
     <div class="row" style="flex-direction:column;align-items:stretch">
-      <label>Usuário <input id="lUser" autocomplete="username"></label>
+      <label>E-mail <input id="lUser" type="email" autocomplete="username"></label>
       <label>Senha <input id="lPass" type="password" autocomplete="current-password"></label>
       <button class="btn" id="lBtn">Entrar</button>
       <div class="msg" id="lMsg"></div>
@@ -94,7 +94,6 @@
           <label>Preço de venda <input id="iPrice" type="number" min="0" step="0.01"></label>
           <button class="btn" id="addLine">Adicionar</button>
         </div>
-        <div class="hint" id="iHint"></div>
       </div>
 
       <div class="card">
@@ -106,7 +105,8 @@
         <div class="total" id="saleTotal">R$ 0,00</div>
         <div class="row" style="justify-content:flex-end;margin-top:12px">
           <span class="msg" id="sMsg"></span>
-          <button class="btn" id="saveSale">Salvar venda</button>
+          <button class="btn ghost" id="saveSale">Salvar venda</button>
+          <button class="btn" id="saveSalePrint">Salvar e imprimir nota</button>
         </div>
       </div>
     </div>
@@ -117,7 +117,7 @@
         <h2>Registro de vendas</h2>
         <div class="muted" id="hSummary"></div>
         <div class="overflow"><table>
-          <thead><tr><th>Data</th><th>Cliente</th><th>Moto</th><th>Pagamento</th><th>Itens</th><th class="num">Total</th></tr></thead>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Moto</th><th>Pagamento</th><th>Itens</th><th class="num">Total</th><th></th></tr></thead>
           <tbody id="hBody"></tbody>
         </table></div>
       </div>
@@ -169,10 +169,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* ================== CONFIGURAÇÃO ================== */
-const SUPABASE_URL = 'https://SEU-PROJETO.supabase.co';   // Supabase > Project Settings > API > Project URL
-const SUPABASE_KEY = 'SUA-CHAVE-ANON-PUBLIC';             // a chave "anon public"
-const MARKUP = 30;                                        // preço sugerido = preço pago + 30
-const LOGIN_USER = 'zeca', LOGIN_PASS = 'zeca';
+const SUPABASE_URL = 'https://ayrpnksfqtweauycbptr.supabase.co/';   // Supabase > Project Settings > API > Project URL
+const SUPABASE_KEY = 'sb_publishable__H5L1lU3HnUpR7-XVts2Sg_p9Fs8mf6';             // a chave "anon public"
+const MARKUP = 30;                                        // porcentagem: preço sugerido = preço pago + 30%
+const NOTA_NOME = 'Oficina do Zeca';
+const NOTA_INFO = '';   // ex.: 'Rua das Flores, 123 - Tel. (11) 99999-9999'
+const sugerir = c => Math.round(c * (1 + MARKUP / 100) * 100) / 100;
 /* ================================================== */
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -181,23 +183,23 @@ const money = n => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', c
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const typeLabel = t => t === 'product' ? 'produto' : 'serviço';
 
-let products = [], services = [], lines = [];
+let products = [], services = [], lines = [], salesCache = [];
 
-/* ---------- login ---------- */
+/* ---------- login (Supabase Auth) ---------- */
 function showApp() {
   $('login').classList.add('hidden');
   $('app').classList.remove('hidden');
   loadAll();
 }
-$('lBtn').onclick = () => {
-  if ($('lUser').value.trim() === LOGIN_USER && $('lPass').value === LOGIN_PASS) {
-    sessionStorage.setItem('auth', '1');
-    showApp();
-  } else $('lMsg').textContent = 'Usuário ou senha incorretos.';
+$('lBtn').onclick = async () => {
+  $('lMsg').textContent = '';
+  const { error } = await db.auth.signInWithPassword({ email: $('lUser').value.trim(), password: $('lPass').value });
+  if (error) { $('lMsg').textContent = 'E-mail ou senha incorretos.'; return; }
+  showApp();
 };
 $('lPass').addEventListener('keydown', e => e.key === 'Enter' && $('lBtn').click());
-$('logout').onclick = () => { sessionStorage.removeItem('auth'); location.reload(); };
-if (sessionStorage.getItem('auth')) showApp();
+$('logout').onclick = async () => { await db.auth.signOut(); location.reload(); };
+db.auth.getSession().then(({ data }) => { if (data.session) showApp(); });
 
 /* ---------- navegação ---------- */
 $('nav').onclick = e => {
@@ -230,8 +232,8 @@ function renderProducts() {
 $('pCost').oninput = () => {
   const c = parseFloat($('pCost').value);
   if (isNaN(c)) { $('pHint').textContent = ''; return; }
-  $('pPrice').value = (c + MARKUP).toFixed(2);
-  $('pHint').textContent = `Preço de venda sugerido: ${money(c + MARKUP)} (preço pago + ${MARKUP}). Você pode alterar.`;
+  $('pPrice').value = sugerir(c).toFixed(2);
+  $('pHint').textContent = `Preço de venda sugerido: ${money(sugerir(c))} (preço pago + ${MARKUP}%). Você pode alterar.`;
 };
 $('addProduct').onclick = async () => {
   const name = $('pName').value.trim();
@@ -277,16 +279,15 @@ function fillItemSelect() {
 function onItemChange() {
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
-  if (!item) { $('iPaid').value = ''; $('iPrice').value = ''; $('iHint').textContent = ''; return; }
+  if (!item) { $('iPaid').value = ''; $('iPrice').value = ''; return; }
   if (isProd) { $('iPaid').value = item.cost_price; suggestPrice(); }
-  else { $('iPrice').value = item.price; $('iHint').textContent = ''; }
+  else { $('iPrice').value = item.price; }
 }
-// pedido do cliente: ao digitar o preço pago, sugere preço + 30
+// pedido do cliente: ao digitar o preço pago, sugere preço + 30%
 function suggestPrice() {
   const paid = parseFloat($('iPaid').value);
-  if (isNaN(paid)) { $('iHint').textContent = ''; return; }
-  $('iPrice').value = (paid + MARKUP).toFixed(2);
-  $('iHint').textContent = `Sugestão para o registro: ${money(paid + MARKUP)} (preço pago + ${MARKUP}). Você pode editar o preço de venda.`;
+  if (isNaN(paid)) return;
+  $('iPrice').value = sugerir(paid).toFixed(2);
 }
 $('iType').onchange = fillItemSelect;
 $('iItem').onchange = onItemChange;
@@ -311,7 +312,7 @@ function renderLines() {
     || '<tr><td colspan="5" class="muted">Nenhum item adicionado.</td></tr>';
   $('saleTotal').textContent = money(lines.reduce((t, l) => t + l.price * l.qty, 0));
 }
-$('saveSale').onclick = async () => {
+async function salvar(imprimir) {
   if (!lines.length) { $('sMsg').textContent = 'Adicione pelo menos um item.'; return; }
   $('sMsg').textContent = '';
   const total = lines.reduce((t, l) => t + l.price * l.qty, 0);
@@ -320,6 +321,7 @@ $('saveSale').onclick = async () => {
     payment: $('sPay').value, items: lines, total
   });
   if (error) { $('sMsg').textContent = error.message; return; }
+  const nota = { created_at: new Date().toISOString(), customer: $('sCustomer').value.trim(), motorcycle: $('sMoto').value.trim(), payment: $('sPay').value, items: lines.slice(), total };
   // baixa no estoque dos produtos vendidos
   for (const l of lines.filter(l => l.type === 'product')) {
     const p = products.find(x => x.id === l.id);
@@ -327,22 +329,60 @@ $('saveSale').onclick = async () => {
   }
   lines = []; ['sCustomer', 'sMoto'].forEach(i => $(i).value = '');
   renderLines(); loadAll();
+  if (imprimir) printReceipt(nota);
   $('sMsg').textContent = 'Venda salva.'; $('sMsg').style.color = 'var(--ok)';
   setTimeout(() => { $('sMsg').textContent = ''; $('sMsg').style.color = ''; }, 3000);
-};
+}
+$('saveSale').onclick = () => salvar(false);
+$('saveSalePrint').onclick = () => salvar(true);
+
+/* ---------- nota para impressão ---------- */
+function printReceipt(s) {
+  const itens = s.items.map(i => `<tr><td>${esc(i.name)}</td><td class="n">${i.qty}</td><td class="n">${money(i.price)}</td><td class="n">${money(i.price * i.qty)}</td></tr>`).join('');
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Nota</title><style>
+    body{font:13px/1.4 Arial,sans-serif;color:#000;max-width:360px;margin:0 auto;padding:12px}
+    h1{font-size:18px;text-align:center;margin:0}
+    .c{text-align:center;margin:2px 0}
+    hr{border:0;border-top:1px dashed #000;margin:10px 0}
+    table{width:100%;border-collapse:collapse}
+    th,td{text-align:left;padding:3px 0;vertical-align:top}
+    .n{text-align:right;white-space:nowrap;padding-left:6px}
+    .t{font-size:16px;font-weight:bold;text-align:right}
+    @page{margin:8mm}
+  </style></head><body>
+    <h1>${esc(NOTA_NOME)}</h1>
+    ${NOTA_INFO ? `<p class="c">${esc(NOTA_INFO)}</p>` : ''}
+    <p class="c">Nota de serviço e venda</p><hr>
+    <div>Data: ${new Date(s.created_at).toLocaleString('pt-BR')}</div>
+    <div>Cliente: ${esc(s.customer) || '-'}</div>
+    <div>Moto: ${esc(s.motorcycle) || '-'}</div>
+    <div>Pagamento: ${esc(s.payment) || '-'}</div><hr>
+    <table><thead><tr><th>Item</th><th class="n">Qtd.</th><th class="n">Unit.</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table><hr>
+    <div class="t">Total: ${money(s.total)}</div><hr>
+    <p class="c">Obrigado pela preferência!</p>
+    <p class="c" style="font-size:11px">Documento sem valor fiscal.</p>
+  </body></html>`;
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0';
+  document.body.appendChild(f);
+  f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
+  setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 60000); }, 300);
+}
 
 /* ---------- histórico ---------- */
 async function loadHistory() {
   const { data, error } = await db.from('sales').select('*').order('created_at', { ascending: false }).limit(500);
   if (error) return alert(error.message);
+  salesCache = data;
   const sum = data.reduce((t, s) => t + Number(s.total), 0);
   $('hSummary').textContent = `${data.length} vendas, ${money(sum)} no total.`;
-  $('hBody').innerHTML = data.map(s => `<tr>
+  $('hBody').innerHTML = data.map((s, i) => `<tr>
     <td>${new Date(s.created_at).toLocaleString('pt-BR')}</td><td>${esc(s.customer)}</td>
     <td>${esc(s.motorcycle)}</td><td>${esc(s.payment)}</td>
     <td>${s.items.map(i => `${esc(i.name)} x${i.qty}`).join(', ')}</td>
-    <td class="num">${money(s.total)}</td></tr>`).join('')
-    || '<tr><td colspan="6" class="muted">Nenhuma venda registrada ainda.</td></tr>';
+    <td class="num">${money(s.total)}</td>
+    <td class="num"><button class="btn ghost small" onclick="printReceipt(salesCache[${i}])">Imprimir nota</button></td></tr>`).join('')
+    || '<tr><td colspan="7" class="muted">Nenhuma venda registrada ainda.</td></tr>';
 }
 
 renderLines();
