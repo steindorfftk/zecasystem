@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oficina do Zeca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#eceef0;--panel:#fff;--ink:#1b2430;--muted:#66717f;--line:#d5d9de;--accent:#d9480f;--accent-ink:#fff;--ok:#2b8a3e}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Barlow,system-ui,sans-serif}
+  h1,h2,h3{font-family:'Barlow Condensed',Impact,sans-serif;margin:0;letter-spacing:.02em}
+  header{background:var(--ink);color:#fff;display:flex;align-items:center;gap:24px;padding:12px 24px;flex-wrap:wrap}
+  header h1{font-size:26px}
+  nav{display:flex;gap:4px;flex:1;flex-wrap:wrap}
+  nav button{background:none;border:0;color:#b8c0cb;padding:8px 14px;font:600 15px Barlow,sans-serif;cursor:pointer;border-bottom:3px solid transparent}
+  nav button.on{color:#fff;border-color:var(--accent)}
+  main{max-width:1000px;margin:24px auto;padding:0 16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:20px}
+  .card h2{font-size:22px;margin-bottom:12px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  label{display:flex;flex-direction:column;font-weight:600;font-size:13px;color:var(--muted);gap:4px;flex:1;min-width:130px}
+  input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
+  input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:4px;padding:10px 18px;font:600 15px Barlow,sans-serif;cursor:pointer}
+  .btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent)}
+  .btn.small{padding:4px 10px;font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+  th{font-size:13px;color:var(--muted)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .hint{font-size:13px;color:var(--ok);min-height:19px;margin-top:6px}
+  .total{font:700 28px 'Barlow Condensed',sans-serif;text-align:right;margin-top:12px}
+  .msg{color:#c92a2a;min-height:20px}
+  .muted{color:var(--muted)}
+  .overflow{overflow-x:auto}
+  #login{max-width:340px;margin:12vh auto;padding:0 16px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<section id="login">
+  <div class="card">
+    <h1 style="font-size:34px;margin-bottom:4px">Oficina do Zeca</h1>
+    <p class="muted" style="margin-top:0">Entre para abrir a oficina.</p>
+    <div class="row" style="flex-direction:column;align-items:stretch">
+      <label>Usuário <input id="lUser" autocomplete="username"></label>
+      <label>Senha <input id="lPass" type="password" autocomplete="current-password"></label>
+      <button class="btn" id="lBtn">Entrar</button>
+      <div class="msg" id="lMsg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header>
+    <h1>Oficina do Zeca</h1>
+    <nav id="nav">
+      <button data-v="sale" class="on">Nova venda</button>
+      <button data-v="history">Registro de vendas</button>
+      <button data-v="products">Produtos</button>
+      <button data-v="services">Serviços</button>
+    </nav>
+    <button class="btn ghost small" id="logout" style="color:#fff;border-color:#fff">Sair</button>
+  </header>
+
+  <main>
+    <!-- NOVA VENDA -->
+    <div id="v-sale">
+      <div class="card">
+        <h2>Cliente</h2>
+        <div class="row">
+          <label>Nome do cliente <input id="sCustomer"></label>
+          <label>Moto <input id="sMoto" placeholder="ex.: Honda CG 160"></label>
+          <label>Pagamento
+            <select id="sPay"><option>Dinheiro</option><option>Pix</option><option>Cartão de débito</option><option>Cartão de crédito</option></select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Adicionar item</h2>
+        <div class="row">
+          <label>Tipo
+            <select id="iType"><option value="product">Produto</option><option value="service">Serviço</option></select>
+          </label>
+          <label style="flex:2">Item <select id="iItem"></select></label>
+          <label style="max-width:90px">Qtd. <input id="iQty" type="number" min="1" value="1"></label>
+          <label id="paidWrap">Preço pago (custo) <input id="iPaid" type="number" min="0" step="0.01"></label>
+          <label>Preço de venda <input id="iPrice" type="number" min="0" step="0.01"></label>
+          <button class="btn" id="addLine">Adicionar</button>
+        </div>
+        <div class="hint" id="iHint"></div>
+      </div>
+
+      <div class="card">
+        <h2>Itens desta venda</h2>
+        <div class="overflow"><table>
+          <thead><tr><th>Item</th><th class="num">Qtd.</th><th class="num">Preço unit.</th><th class="num">Subtotal</th><th></th></tr></thead>
+          <tbody id="lines"></tbody>
+        </table></div>
+        <div class="total" id="saleTotal">R$ 0,00</div>
+        <div class="row" style="justify-content:flex-end;margin-top:12px">
+          <span class="msg" id="sMsg"></span>
+          <button class="btn" id="saveSale">Salvar venda</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="v-history" class="hidden">
+      <div class="card">
+        <h2>Registro de vendas</h2>
+        <div class="muted" id="hSummary"></div>
+        <div class="overflow"><table>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Moto</th><th>Pagamento</th><th>Itens</th><th class="num">Total</th></tr></thead>
+          <tbody id="hBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- PRODUTOS -->
+    <div id="v-products" class="hidden">
+      <div class="card">
+        <h2>Cadastrar produto</h2>
+        <div class="row">
+          <label style="flex:2">Nome <input id="pName"></label>
+          <label>Preço pago (custo) <input id="pCost" type="number" min="0" step="0.01"></label>
+          <label>Preço de venda <input id="pPrice" type="number" min="0" step="0.01"></label>
+          <label style="max-width:100px">Estoque <input id="pStock" type="number" min="0" value="0"></label>
+          <button class="btn" id="addProduct">Salvar</button>
+        </div>
+        <div class="hint" id="pHint"></div>
+      </div>
+      <div class="card">
+        <h2>Produtos disponíveis</h2>
+        <div class="overflow"><table>
+          <thead><tr><th>Nome</th><th class="num">Custo</th><th class="num">Preço de venda</th><th class="num">Estoque</th><th></th></tr></thead>
+          <tbody id="pBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- SERVIÇOS -->
+    <div id="v-services" class="hidden">
+      <div class="card">
+        <h2>Adicionar serviço personalizado</h2>
+        <div class="row">
+          <label style="flex:2">Nome do serviço <input id="svName"></label>
+          <label>Preço <input id="svPrice" type="number" min="0" step="0.01"></label>
+          <button class="btn" id="addService">Salvar</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Serviços oferecidos</h2>
+        <div class="overflow"><table>
+          <thead><tr><th>Serviço</th><th class="num">Preço</th><th></th></tr></thead>
+          <tbody id="svBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* ================== CONFIGURAÇÃO ================== */
+const SUPABASE_URL = 'https://SEU-PROJETO.supabase.co';   // Supabase > Project Settings > API > Project URL
+const SUPABASE_KEY = 'SUA-CHAVE-ANON-PUBLIC';             // a chave "anon public"
+const MARKUP = 30;                                        // preço sugerido = preço pago + 30
+const LOGIN_USER = 'zeca', LOGIN_PASS = 'zeca';
+/* ================================================== */
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const money = n => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const typeLabel = t => t === 'product' ? 'produto' : 'serviço';
+
+let products = [], services = [], lines = [];
+
+/* ---------- login ---------- */
+function showApp() {
+  $('login').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  loadAll();
+}
+$('lBtn').onclick = () => {
+  if ($('lUser').value.trim() === LOGIN_USER && $('lPass').value === LOGIN_PASS) {
+    sessionStorage.setItem('auth', '1');
+    showApp();
+  } else $('lMsg').textContent = 'Usuário ou senha incorretos.';
+};
+$('lPass').addEventListener('keydown', e => e.key === 'Enter' && $('lBtn').click());
+$('logout').onclick = () => { sessionStorage.removeItem('auth'); location.reload(); };
+if (sessionStorage.getItem('auth')) showApp();
+
+/* ---------- navegação ---------- */
+$('nav').onclick = e => {
+  const v = e.target.dataset.v; if (!v) return;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  ['sale', 'history', 'products', 'services'].forEach(x => $('v-' + x).classList.toggle('hidden', x !== v));
+  if (v === 'history') loadHistory();
+};
+
+/* ---------- carregar dados ---------- */
+async function loadAll() {
+  const [p, s] = await Promise.all([
+    db.from('products').select('*').order('name'),
+    db.from('services').select('*').order('name')
+  ]);
+  if (p.error || s.error) return alert('Erro no banco de dados: ' + (p.error || s.error).message);
+  products = p.data; services = s.data;
+  renderProducts(); renderServices(); fillItemSelect();
+}
+
+/* ---------- produtos ---------- */
+function renderProducts() {
+  $('pBody').innerHTML = products.map(p => `<tr>
+    <td>${esc(p.name)}</td><td class="num">${money(p.cost_price)}</td>
+    <td class="num">${money(p.sale_price)}</td><td class="num">${p.stock}</td>
+    <td class="num"><button class="btn ghost small" onclick="delRow('products',${p.id})">Excluir</button></td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">Nenhum produto ainda. Cadastre o primeiro acima.</td></tr>';
+}
+// preço pago -> preço de venda sugerido
+$('pCost').oninput = () => {
+  const c = parseFloat($('pCost').value);
+  if (isNaN(c)) { $('pHint').textContent = ''; return; }
+  $('pPrice').value = (c + MARKUP).toFixed(2);
+  $('pHint').textContent = `Preço de venda sugerido: ${money(c + MARKUP)} (preço pago + ${MARKUP}). Você pode alterar.`;
+};
+$('addProduct').onclick = async () => {
+  const name = $('pName').value.trim();
+  if (!name) return alert('Digite o nome do produto.');
+  const { error } = await db.from('products').insert({
+    name, cost_price: +$('pCost').value || 0, sale_price: +$('pPrice').value || 0, stock: parseInt($('pStock').value) || 0
+  });
+  if (error) return alert(error.message);
+  ['pName', 'pCost', 'pPrice'].forEach(i => $(i).value = ''); $('pStock').value = 0; $('pHint').textContent = '';
+  loadAll();
+};
+
+/* ---------- serviços ---------- */
+function renderServices() {
+  $('svBody').innerHTML = services.map(s => `<tr>
+    <td>${esc(s.name)}</td><td class="num">${money(s.price)}</td>
+    <td class="num"><button class="btn ghost small" onclick="delRow('services',${s.id})">Excluir</button></td></tr>`).join('')
+    || '<tr><td colspan="3" class="muted">Nenhum serviço ainda.</td></tr>';
+}
+$('addService').onclick = async () => {
+  const name = $('svName').value.trim();
+  if (!name) return alert('Digite o nome do serviço.');
+  const { error } = await db.from('services').insert({ name, price: +$('svPrice').value || 0 });
+  if (error) return alert(error.message);
+  $('svName').value = ''; $('svPrice').value = ''; loadAll();
+};
+
+async function delRow(table, id) {
+  if (!confirm('Excluir este item?')) return;
+  const { error } = await db.from(table).delete().eq('id', id);
+  if (error) return alert(error.message);
+  loadAll();
+}
+
+/* ---------- nova venda ---------- */
+function fillItemSelect() {
+  const isProd = $('iType').value === 'product';
+  const list = isProd ? products : services;
+  $('iItem').innerHTML = list.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  $('paidWrap').classList.toggle('hidden', !isProd);
+  onItemChange();
+}
+function onItemChange() {
+  const isProd = $('iType').value === 'product';
+  const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
+  if (!item) { $('iPaid').value = ''; $('iPrice').value = ''; $('iHint').textContent = ''; return; }
+  if (isProd) { $('iPaid').value = item.cost_price; suggestPrice(); }
+  else { $('iPrice').value = item.price; $('iHint').textContent = ''; }
+}
+// pedido do cliente: ao digitar o preço pago, sugere preço + 30
+function suggestPrice() {
+  const paid = parseFloat($('iPaid').value);
+  if (isNaN(paid)) { $('iHint').textContent = ''; return; }
+  $('iPrice').value = (paid + MARKUP).toFixed(2);
+  $('iHint').textContent = `Sugestão para o registro: ${money(paid + MARKUP)} (preço pago + ${MARKUP}). Você pode editar o preço de venda.`;
+}
+$('iType').onchange = fillItemSelect;
+$('iItem').onchange = onItemChange;
+$('iPaid').oninput = suggestPrice;
+
+$('addLine').onclick = () => {
+  const isProd = $('iType').value === 'product';
+  const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
+  if (!item) return alert('Escolha um item primeiro.');
+  const qty = parseInt($('iQty').value) || 1;
+  lines.push({
+    type: $('iType').value, id: item.id, name: item.name, qty,
+    paid: isProd ? (+$('iPaid').value || 0) : null, price: +$('iPrice').value || 0
+  });
+  $('iQty').value = 1; renderLines();
+};
+function renderLines() {
+  $('lines').innerHTML = lines.map((l, i) => `<tr>
+    <td>${esc(l.name)} <span class="muted">(${typeLabel(l.type)})</span></td><td class="num">${l.qty}</td>
+    <td class="num">${money(l.price)}</td><td class="num">${money(l.price * l.qty)}</td>
+    <td class="num"><button class="btn ghost small" onclick="lines.splice(${i},1);renderLines()">Remover</button></td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">Nenhum item adicionado.</td></tr>';
+  $('saleTotal').textContent = money(lines.reduce((t, l) => t + l.price * l.qty, 0));
+}
+$('saveSale').onclick = async () => {
+  if (!lines.length) { $('sMsg').textContent = 'Adicione pelo menos um item.'; return; }
+  $('sMsg').textContent = '';
+  const total = lines.reduce((t, l) => t + l.price * l.qty, 0);
+  const { error } = await db.from('sales').insert({
+    customer: $('sCustomer').value.trim(), motorcycle: $('sMoto').value.trim(),
+    payment: $('sPay').value, items: lines, total
+  });
+  if (error) { $('sMsg').textContent = error.message; return; }
+  // baixa no estoque dos produtos vendidos
+  for (const l of lines.filter(l => l.type === 'product')) {
+    const p = products.find(x => x.id === l.id);
+    if (p) await db.from('products').update({ stock: Math.max(0, p.stock - l.qty) }).eq('id', p.id);
+  }
+  lines = []; ['sCustomer', 'sMoto'].forEach(i => $(i).value = '');
+  renderLines(); loadAll();
+  $('sMsg').textContent = 'Venda salva.'; $('sMsg').style.color = 'var(--ok)';
+  setTimeout(() => { $('sMsg').textContent = ''; $('sMsg').style.color = ''; }, 3000);
+};
+
+/* ---------- histórico ---------- */
+async function loadHistory() {
+  const { data, error } = await db.from('sales').select('*').order('created_at', { ascending: false }).limit(500);
+  if (error) return alert(error.message);
+  const sum = data.reduce((t, s) => t + Number(s.total), 0);
+  $('hSummary').textContent = `${data.length} vendas, ${money(sum)} no total.`;
+  $('hBody').innerHTML = data.map(s => `<tr>
+    <td>${new Date(s.created_at).toLocaleString('pt-BR')}</td><td>${esc(s.customer)}</td>
+    <td>${esc(s.motorcycle)}</td><td>${esc(s.payment)}</td>
+    <td>${s.items.map(i => `${esc(i.name)} x${i.qty}`).join(', ')}</td>
+    <td class="num">${money(s.total)}</td></tr>`).join('')
+    || '<tr><td colspan="6" class="muted">Nenhuma venda registrada ainda.</td></tr>';
+}
+
+renderLines();
+</script>
+</body>
+</html>
