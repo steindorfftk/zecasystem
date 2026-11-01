@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Oficina do Zeca</title>
+<title>zecamotos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -17,6 +17,22 @@
   .nav{display:flex;gap:6px;flex-wrap:wrap;flex-basis:100%}
   .nbtn{background:none;border:0;color:#b8c0cb;padding:6px 12px;font:600 15px Barlow,sans-serif;cursor:pointer;border-bottom:3px solid transparent}
   .nbtn.on{color:#fff;border-bottom-color:var(--accent)}
+  main{max-width:1000px;margin:24px auto;padding:0 16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:20px}
+  .card h2{font-size:22px;margin-bottom:12px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  label{display:flex;flex-direction:column;font-weight:600;font-size:13px;color:var(--muted);gap:4px;flex:1;min-width:130px}
+  input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
+  input[readonly]{background:#f3f4f6}
+  input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:4px;padding:10px 18px;font:600 15px Barlow,sans-serif;cursor:pointer}
+  .btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent)}
+  .btn.small{padding:4px 10px;font-size:13px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:6px;padding:22px 18px;text-align:left;cursor:pointer;font:inherit;color:var(--ink)}
+  .tile:hover{border-color:var(--ink);border-left-color:var(--accent)}
+  .tile b{display:block;font:700 24px 'Barlow Condensed',sans-serif}
+  .tile span{color:var(--muted);font-size:14px}
   .tile.go{background:var(--go);border-color:var(--go);color:#fff}
   .tile.go span{color:#d8f0df}
   .tile.go:hover{background:#17612e;border-color:#17612e}
@@ -27,35 +43,18 @@
   .seg .btn.on{background:var(--accent);color:var(--accent-ink)}
   #v-sale:not(.quick) .quick-only{display:none!important}
   #v-sale.quick .oficina-only{display:none!important}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
-  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
-  .kpi b{display:block;font:700 28px 'Barlow Condensed',sans-serif}
-  .kpi span{color:var(--muted);font-size:13px}
-  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:16px}
-  .chip{flex-direction:row;align-items:center;gap:6px;flex:none;min-width:0;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer;background:#fff;color:var(--ink)}
-  details.opt summary{cursor:pointer;color:var(--muted);font-weight:600}
-  main{max-width:1000px;margin:24px auto;padding:0 16px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:20px}
-  .card h2{font-size:22px;margin-bottom:12px}
-  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
-  label{display:flex;flex-direction:column;font-weight:600;font-size:13px;color:var(--muted);gap:4px;flex:1;min-width:130px}
-  input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
-  input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-  .btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:4px;padding:10px 18px;font:600 15px Barlow,sans-serif;cursor:pointer}
-  .btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent)}
-  .btn.small{padding:4px 10px;font-size:13px}
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px}
-  .tile{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:6px;padding:22px 18px;text-align:left;cursor:pointer;font:inherit;color:var(--ink)}
-  .tile:hover{border-color:var(--ink);border-left-color:var(--accent)}
-  .tile b{display:block;font:700 24px 'Barlow Condensed',sans-serif}
-  .tile span{color:var(--muted);font-size:14px}
   table{width:100%;border-collapse:collapse;margin-top:12px}
   th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
   th{font-size:13px;color:var(--muted)}
+  th[data-k]{cursor:pointer;user-select:none;white-space:nowrap}
+  th[data-k]:hover{color:var(--ink)}
+  th.asc::after{content:' ▲';font-size:10px}
+  th.desc::after{content:' ▼';font-size:10px}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   tr.low td{background:var(--warn)}
   tr.canceled td{color:var(--muted);text-decoration:line-through}
   .hint{font-size:13px;color:var(--ok);min-height:19px;margin-top:6px}
+  .help{font-size:12px;color:var(--muted);font-weight:400}
   .total{font:700 28px 'Barlow Condensed',sans-serif;text-align:right;margin-top:12px}
   .msg{color:#c92a2a;min-height:20px}
   .muted{color:var(--muted)}
@@ -63,14 +62,47 @@
   #login{max-width:340px;margin:12vh auto;padding:0 16px}
   .hidden{display:none!important}
   body:not(.is-admin) .admin-only{display:none!important}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+  .kpi b{display:block;font:700 28px 'Barlow Condensed',sans-serif}
+  .kpi span{color:var(--muted);font-size:13px}
+  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:16px}
+  .chip{flex-direction:row;align-items:center;gap:6px;flex:none;min-width:0;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer;background:#fff;color:var(--ink)}
+  details.opt summary{cursor:pointer;color:var(--muted);font-weight:600}
+  /* busca de cliente com lista suspensa */
+  .picker{position:relative}
+  .dd{position:absolute;z-index:15;left:0;right:0;background:#fff;border:1px solid var(--ink);border-radius:4px;max-height:280px;overflow:auto;box-shadow:0 8px 20px rgba(27,36,48,.18)}
+  .dd div{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
+  .dd div[data-id]:hover{background:var(--warn)}
+  /* agenda */
+  .agenda-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:16px;align-items:start}
+  @media(max-width:860px){.agenda-grid{grid-template-columns:1fr}}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal .dow{font-size:12px;font-weight:600;color:var(--muted);text-align:center;padding:4px 0}
+  .cal .day{min-height:82px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 5px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font-size:12px;overflow:hidden}
+  .cal .day:hover{border-color:var(--ink)}
+  .cal .day.out{background:#f6f7f8;color:#9aa3ad}
+  .cal .day.sel{outline:2px solid var(--accent);border-color:var(--accent)}
+  .cal .n{font-weight:700;align-self:flex-start;padding:0 6px;border-radius:999px}
+  .cal .day.today .n{background:var(--accent);color:#fff}
+  .cal .ev{background:var(--warn);border-left:3px solid var(--accent);border-radius:3px;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal .ev.concluido{background:#e6f4ea;border-left-color:var(--ok)}
+  .cal .ev.cancelado{opacity:.5;text-decoration:line-through}
+  .agtop{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .agtop h2{flex:1;margin:0;text-transform:capitalize}
+  .ag{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:4px;padding:8px 10px;margin-bottom:8px;background:#fff}
+  .ag.concluido{border-left-color:var(--ok)}
+  .ag.cancelado{opacity:.55}
+  .ag .acts{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;background:var(--bg);border-radius:999px;padding:1px 8px;color:var(--muted)}
 </style>
 </head>
 <body>
 
 <section id="login">
   <div class="card">
-    <h1 style="font-size:34px;margin-bottom:4px">Oficina do Zeca</h1>
-    <p class="muted" style="margin-top:0">Entre para abrir a oficina.</p>
+    <h1 style="font-size:34px;margin-bottom:4px">zecamotos</h1>
+    <p class="muted" style="margin-top:0">Entre para abrir o sistema.</p>
     <div class="row" style="flex-direction:column;align-items:stretch">
       <label>E-mail <input id="lUser" type="email" autocomplete="username"></label>
       <label>Senha <input id="lPass" type="password" autocomplete="current-password"></label>
@@ -83,18 +115,19 @@
 
 <div id="app" class="hidden">
   <header>
-    <h1 data-go="home">Oficina do Zeca</h1>
+    <h1 data-go="home">zecamotos</h1>
     <span id="who"></span>
     <button class="btn ghost small" id="pwdBtn" style="color:#fff;border-color:#fff">Alterar senha</button>
     <button class="btn ghost small" id="logout" style="color:#fff;border-color:#fff">Sair</button>
     <nav class="nav">
       <button class="nbtn" data-go="home">Início</button>
       <button class="nbtn" data-go="sale">Nova venda</button>
-      <button class="nbtn" data-go="history">Registro de vendas</button>
-      <button class="nbtn" data-go="products">Produtos</button>
-      <button class="nbtn" data-go="services">Serviços</button>
+      <button class="nbtn" data-go="agenda">Agenda</button>
       <button class="nbtn" data-go="clients">Clientes</button>
-      <button class="nbtn" data-go="debtors">Devedores</button>
+      <button class="nbtn admin-only" data-go="history">Registro de vendas</button>
+      <button class="nbtn admin-only" data-go="products">Produtos</button>
+      <button class="nbtn admin-only" data-go="services">Serviços</button>
+      <button class="nbtn admin-only" data-go="debtors">Devedores</button>
       <button class="nbtn admin-only" data-go="analysis">Análises</button>
     </nav>
   </header>
@@ -104,14 +137,15 @@
     <div id="v-home">
       <div class="tiles">
         <button class="tile go" data-go="sale"><b>Nova venda</b><span>Serviços e produtos, com nota para imprimir</span></button>
-        <button class="tile" data-go="history"><b>Registro de vendas</b><span>Buscar, filtrar, reimprimir e cancelar</span></button>
-        <button class="tile" data-go="products"><b>Produtos</b><span>Preços, estoque e estoque mínimo</span></button>
-        <button class="tile" data-go="services"><b>Serviços</b><span>Serviços e preços personalizados</span></button>
+        <button class="tile" data-go="agenda"><b>Agenda</b><span id="agTile">Calendário de serviços</span></button>
         <button class="tile" data-go="clients"><b>Clientes</b><span>Cadastro de clientes e motos</span></button>
-        <button class="tile" data-go="debtors"><b>Devedores</b><span id="debtTotal">Fiado e valores a receber</span></button>
+        <button class="tile admin-only" data-go="history"><b>Registro de vendas</b><span>Buscar, filtrar, reimprimir e cancelar</span></button>
+        <button class="tile admin-only" data-go="products"><b>Produtos</b><span>Cadastro, compras e estoque</span></button>
+        <button class="tile admin-only" data-go="services"><b>Serviços</b><span>Serviços e preços personalizados</span></button>
+        <button class="tile admin-only" data-go="debtors"><b>Devedores</b><span id="debtTotal">Fiado e valores a receber</span></button>
         <button class="tile admin-only" data-go="analysis"><b>Análises</b><span>Gráficos de vendas, lucro e clientes</span></button>
       </div>
-      <div class="card hidden" id="lowStock"></div>
+      <div class="card admin-only hidden" id="lowStock"></div>
       <div class="adm admin-only"><span class="muted">Administração:</span>
         <button class="btn ghost small" data-go="users">Usuários</button>
         <button class="btn ghost small" data-go="audit">Histórico de alterações</button>
@@ -135,7 +169,7 @@
           <div id="sPicker" class="oficina-only" style="flex:1 1 100%"></div>
           <label class="oficina-only">Nome do cliente <input id="sCustomer"></label>
           <label class="oficina-only">Moto (modelo) <input id="sMoto" placeholder="ex.: Honda CG 160"></label>
-          <label class="oficina-only">Placa <input id="sPlate" placeholder="ABC1D23"></label>
+          <label class="oficina-only">Placa (opcional) <input id="sPlate" placeholder="ABC1D23"></label>
           <label class="oficina-only">Quilometragem (km) <input id="sKm" type="number" min="0" step="1" placeholder="opcional"></label>
           <label>Pagamento
             <select id="sPay"><option>Dinheiro</option><option>Pix</option><option>Cartão de débito</option><option>Cartão de crédito</option><option>Fiado</option></select>
@@ -171,13 +205,48 @@
       </div>
     </div>
 
+    <!-- AGENDA -->
+    <div id="v-agenda" class="hidden">
+      <div style="margin-bottom:12px"><button class="btn ghost small" data-go="home">← Voltar ao início</button></div>
+      <div class="agenda-grid">
+        <div class="card">
+          <div class="agtop">
+            <button class="btn ghost small" id="agPrev">‹</button>
+            <h2 id="agTitulo"></h2>
+            <button class="btn ghost small" id="agHoje">Hoje</button>
+            <button class="btn ghost small" id="agNext">›</button>
+          </div>
+          <div class="cal" id="agCal"></div>
+        </div>
+        <div>
+          <div class="card">
+            <h2 id="agDiaTitulo" style="text-transform:capitalize"></h2>
+            <div id="agLista"></div>
+          </div>
+          <div class="card">
+            <h2>Novo agendamento</h2>
+            <div class="row" style="flex-direction:column;align-items:stretch">
+              <label>Hora <input id="aTime" type="time" value="09:00"></label>
+              <div id="aPicker"></div>
+              <label>Nome do cliente <input id="aName"></label>
+              <label>Moto (modelo) <input id="aMoto"></label>
+              <label>Placa (opcional) <input id="aPlate"></label>
+              <label>Serviço <input id="aServ" list="servList" placeholder="ex.: Revisão completa"></label>
+              <label>Observação <input id="aNote"></label>
+              <button class="btn" id="addAg">Agendar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- REGISTRO DE VENDAS -->
     <div id="v-history" class="hidden">
       <div style="margin-bottom:12px"><button class="btn ghost small" data-go="home">← Voltar ao início</button></div>
       <div class="card">
         <h2>Registro de vendas</h2>
         <div class="row">
-          <label style="flex:2">Buscar (cliente, moto, item, nº) <input id="hQ"></label>
+          <label style="flex:2">Buscar (cliente, moto, placa, item, nº) <input id="hQ"></label>
           <label>De <input id="hFrom" type="date"></label>
           <label>Até <input id="hTo" type="date"></label>
           <label>Tipo <select id="hType"><option value="">Todas</option><option value="oficina">Oficina</option><option value="balcao">Balcão</option></select></label>
@@ -185,7 +254,10 @@
         </div>
         <div class="muted" id="hSummary" style="margin-top:10px"></div>
         <div class="overflow"><table>
-          <thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Moto</th><th>Pagamento</th><th>Itens</th><th class="num">Total</th><th></th></tr></thead>
+          <thead><tr>
+            <th data-t="h" data-k="numero">Nº</th><th data-t="h" data-k="created_at">Data</th><th data-t="h" data-k="customer">Cliente</th>
+            <th data-t="h" data-k="motorcycle">Moto</th><th data-t="h" data-k="payment">Pagamento</th><th>Itens</th>
+            <th class="num" data-t="h" data-k="total">Total</th><th></th></tr></thead>
           <tbody id="hBody"></tbody>
         </table></div>
       </div>
@@ -194,27 +266,59 @@
     <!-- PRODUTOS -->
     <div id="v-products" class="hidden">
       <div style="margin-bottom:12px"><button class="btn ghost small" data-go="home">← Voltar ao início</button></div>
-      <div class="card admin-only">
-        <h2>Cadastrar produto</h2>
-        <div class="row">
-          <label style="max-width:120px">Código <input id="pCode" placeholder="automático"></label>
-          <label style="flex:2">Nome <input id="pName"></label>
-          <label>Categoria <input id="pCat" list="catList" placeholder="ex.: Bebidas"></label>
-          <label>Preço pago (custo) <input id="pCost" type="number" min="0" step="0.01"></label>
-          <label>Preço de venda <input id="pPrice" type="number" min="0" step="0.01"></label>
-          <label style="max-width:100px">Estoque <input id="pStock" type="number" min="0" value="0"></label>
-          <label style="max-width:110px">Estoque mínimo <input id="pMin" type="number" min="0" value="5"></label>
-          <button class="btn" id="addProduct">Salvar</button>
+      <div class="card">
+        <div class="seg">
+          <button class="btn ghost on" id="modoNovo">Cadastrar produto novo</button>
+          <button class="btn ghost" id="modoCompra">Registrar compra de estoque</button>
         </div>
-        <div class="hint" id="pHint"></div>
+        <div id="formNovo" style="margin-top:16px">
+          <div class="row">
+            <label style="max-width:120px">Código <input id="pCode" placeholder="automático"></label>
+            <label style="flex:2">Nome <input id="pName"></label>
+            <label>Categoria <input id="pCat" list="catList" placeholder="ex.: Bebidas"></label>
+            <label>Preço pago (custo) <input id="pCost" type="number" min="0" step="0.01"></label>
+            <label>Preço de venda <input id="pPrice" type="number" min="0" step="0.01"></label>
+            <label style="max-width:100px">Estoque inicial <input id="pStock" type="number" min="0" value="0"></label>
+            <label style="max-width:140px">Estoque mínimo (aviso) <input id="pMin" type="number" min="0" value="5"></label>
+            <button class="btn" id="addProduct">Salvar produto</button>
+          </div>
+          <div class="help" style="margin-top:8px">Estoque mínimo é só um aviso: quando o estoque chegar nesse número, o produto aparece em "Estoque baixo" na página inicial. Ele não impede vendas. Deixe o código em branco para o sistema gerar sozinho.</div>
+          <div class="hint" id="pHint"></div>
+        </div>
+        <div id="formCompra" class="hidden" style="margin-top:16px">
+          <div class="row">
+            <label style="flex:2">Buscar produto (código ou nome) <input id="buQ" autocomplete="off"></label>
+            <label style="flex:2">Produto <select id="buProd"></select></label>
+            <label style="max-width:110px">Quantidade <input id="buQty" type="number" min="1" step="1"></label>
+            <label>Custo unitário (R$) <input id="buCost" type="number" min="0" step="0.01"></label>
+            <label>Novo preço de venda <input id="buPrice" type="number" min="0" step="0.01" placeholder="não alterar"></label>
+            <label>Fornecedor <input id="buSup" list="supList"></label>
+            <button class="btn" id="addCompra">Registrar compra</button>
+          </div>
+          <div class="help" style="margin-top:8px">A quantidade é somada ao estoque e o custo do produto passa a ser o desta compra. Ao digitar o custo, o preço de venda é sugerido (custo + 30%); apague o campo para não mudar o preço.</div>
+          <div class="hint" id="buHint"></div>
+        </div>
       </div>
       <div class="card">
         <h2>Produtos disponíveis</h2>
         <label>Buscar por código, nome ou categoria <input id="pQ"></label>
-        <div class="muted">Linhas em laranja estão com estoque igual ou abaixo do mínimo.</div>
+        <div class="muted" style="margin-top:8px">Linhas em laranja estão com estoque igual ou abaixo do mínimo de aviso.</div>
         <div class="overflow"><table>
-          <thead><tr><th>Código</th><th>Nome</th><th>Categoria</th><th class="num admin-only">Custo</th><th class="num">Preço de venda</th><th class="num">Estoque</th><th class="num">Mínimo</th><th class="admin-only"></th></tr></thead>
+          <thead><tr>
+            <th data-t="p" data-k="code">Código</th><th data-t="p" data-k="name">Nome</th><th data-t="p" data-k="category">Categoria</th>
+            <th class="num" data-t="p" data-k="cost_price">Custo</th><th class="num" data-t="p" data-k="sale_price">Preço de venda</th>
+            <th class="num" data-t="p" data-k="stock">Estoque</th><th class="num" data-t="p" data-k="min_stock">Mínimo (aviso)</th><th></th></tr></thead>
           <tbody id="pBody"></tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <h2>Compras registradas</h2>
+        <div class="overflow"><table>
+          <thead><tr>
+            <th data-t="pur" data-k="created_at">Data</th><th data-t="pur" data-k="product_name">Produto</th><th class="num" data-t="pur" data-k="qty">Qtd.</th>
+            <th class="num" data-t="pur" data-k="unit_cost">Custo unit.</th><th class="num" data-t="pur" data-k="total">Total</th>
+            <th data-t="pur" data-k="supplier">Fornecedor</th><th data-t="pur" data-k="user_email">Registrado por</th></tr></thead>
+          <tbody id="purBody"></tbody>
         </table></div>
       </div>
     </div>
@@ -222,7 +326,7 @@
     <!-- SERVIÇOS -->
     <div id="v-services" class="hidden">
       <div style="margin-bottom:12px"><button class="btn ghost small" data-go="home">← Voltar ao início</button></div>
-      <div class="card admin-only">
+      <div class="card">
         <h2>Adicionar serviço personalizado</h2>
         <div class="row">
           <label style="max-width:120px">Código <input id="svCode" placeholder="automático"></label>
@@ -231,11 +335,14 @@
           <label>Preço <input id="svPrice" type="number" min="0" step="0.01"></label>
           <button class="btn" id="addService">Salvar</button>
         </div>
+        <div class="hint" id="svHint"></div>
       </div>
       <div class="card">
         <h2>Serviços oferecidos</h2>
         <div class="overflow"><table>
-          <thead><tr><th>Código</th><th>Serviço</th><th>Categoria</th><th class="num">Preço</th><th class="admin-only"></th></tr></thead>
+          <thead><tr>
+            <th data-t="sv" data-k="code">Código</th><th data-t="sv" data-k="name">Serviço</th><th data-t="sv" data-k="category">Categoria</th>
+            <th class="num" data-t="sv" data-k="price">Preço</th><th></th></tr></thead>
           <tbody id="svBody"></tbody>
         </table></div>
       </div>
@@ -250,7 +357,7 @@
           <label style="flex:2">Nome <input id="cName"></label>
           <label>Telefone <input id="cPhone"></label>
           <label>Moto (modelo) <input id="cMoto"></label>
-          <label>Placa <input id="cPlate" placeholder="ABC1D23"></label>
+          <label>Placa (opcional) <input id="cPlate" placeholder="ABC1D23"></label>
         </div>
         <details class="opt" id="cOpt" style="margin:14px 0">
           <summary>Dados opcionais (endereço, sexo e faixa etária, para análises de marketing)</summary>
@@ -264,9 +371,11 @@
       </div>
       <div class="card">
         <h2>Clientes</h2>
-        <label>Buscar <input id="cQ" placeholder="nome, telefone ou moto"></label>
+        <label>Buscar <input id="cQ" placeholder="nome, telefone, moto ou placa"></label>
         <div class="overflow"><table>
-          <thead><tr><th>Nome</th><th>Telefone</th><th>Moto</th><th>Placa</th><th class="num">Deve</th><th></th></tr></thead>
+          <thead><tr>
+            <th data-t="c" data-k="name">Nome</th><th data-t="c" data-k="phone">Telefone</th><th data-t="c" data-k="motorcycle">Moto</th><th data-t="c" data-k="plate">Placa</th>
+            <th class="num admin-only" data-t="c" data-k="deve">Deve</th><th class="admin-only"></th></tr></thead>
           <tbody id="cBody"></tbody>
         </table></div>
       </div>
@@ -295,7 +404,9 @@
           </label>
         </div>
         <div class="overflow"><table>
-          <thead><tr><th>Cliente</th><th>Telefone</th><th>Nota</th><th>Data</th><th class="num">Total</th><th class="num">Pago</th><th class="num">Falta</th><th></th></tr></thead>
+          <thead><tr>
+            <th data-t="d" data-k="nome">Cliente</th><th data-t="d" data-k="fone">Telefone</th><th data-t="d" data-k="numero">Nota</th><th data-t="d" data-k="created_at">Data</th>
+            <th class="num" data-t="d" data-k="total">Total</th><th class="num" data-t="d" data-k="paid">Pago</th><th class="num" data-t="d" data-k="falta">Falta</th><th></th></tr></thead>
           <tbody id="dBody"></tbody>
         </table></div>
       </div>
@@ -327,16 +438,16 @@
         <div class="row">
           <label style="flex:2">E-mail <input id="uEmail" type="email"></label>
           <label>Senha (mín. 8 caracteres) <input id="uPass" type="password" autocomplete="new-password"></label>
-          <label>Tipo <select id="uRole"><option value="funcionario">Funcionário</option><option value="admin">Administrador</option></select></label>
           <button class="btn" id="addUser">Criar usuário</button>
         </div>
+        <label class="chip" style="margin-top:12px;width:fit-content"><input type="checkbox" id="uAdmin"> Criar como administrador (acesso total)</label>
         <div class="msg" id="uMsg"></div>
-        <p class="muted" style="margin-bottom:0">Funcionário: vende e consulta, sem ver custos nem alterar cadastros. Administrador: acesso total.</p>
+        <p class="help" style="margin:8px 0 0">O funcionário só consegue: fazer vendas (com os preços do cadastro), usar a agenda e cadastrar clientes. Não vê custos, lucro, registro de vendas nem devedores.</p>
       </div>
       <div class="card">
         <h2>Usuários</h2>
         <div class="overflow"><table>
-          <thead><tr><th>E-mail</th><th>Tipo</th><th>Criado em</th></tr></thead>
+          <thead><tr><th data-t="u" data-k="email">E-mail</th><th data-t="u" data-k="role">Tipo</th><th data-t="u" data-k="created_at">Criado em</th></tr></thead>
           <tbody id="uBody"></tbody>
         </table></div>
       </div>
@@ -349,7 +460,9 @@
         <h2>Histórico de alterações</h2>
         <div class="muted">Últimas 200 ações.</div>
         <div class="overflow"><table>
-          <thead><tr><th>Data</th><th>Usuário</th><th>Ação</th><th>Onde</th><th>Detalhes</th></tr></thead>
+          <thead><tr>
+            <th data-t="a" data-k="created_at">Data</th><th data-t="a" data-k="user_email">Usuário</th><th data-t="a" data-k="action">Ação</th>
+            <th data-t="a" data-k="table_name">Onde</th><th>Detalhes</th></tr></thead>
           <tbody id="aBody"></tbody>
         </table></div>
       </div>
@@ -359,6 +472,8 @@
 </div>
 
 <datalist id="catList"></datalist>
+<datalist id="servList"></datalist>
+<datalist id="supList"></datalist>
 
 <dialog id="pwdDlg" class="card">
   <h2>Alterar senha</h2>
@@ -391,10 +506,10 @@ const SUPABASE_URL = 'https://ayrpnksfqtweauycbptr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable__H5L1lU3HnUpR7-XVts2Sg_p9Fs8mf6';
 const MARKUP = 30;                 // preço sugerido = preço pago + 30%
 const ESTOQUE_MIN_PADRAO = 5;      // valor inicial do estoque mínimo ao cadastrar produto
-const NOTA_NOME = 'Oficina do Zeca';
+const NOTA_NOME = 'zecamotos';     // só aparece na nota se o logo não carregar
 const NOTA_INFO = '';              // ex.: 'Rua das Flores, 123 - Tel. (11) 99999-9999'
-const NOTA_LOGO = 'logo.png';       // arquivo do logo, na mesma pasta do index.html (deixe '' para não usar)
-const BALCAO_NOME = 'Venda de balcão';   // nome neutro usado nas vendas rápidas
+const NOTA_LOGO = 'logo.png';      // arquivo do logo, na mesma pasta do index.html (deixe '' para não usar)
+const BALCAO_NOME = 'Venda de balcão';
 /* ================================================== */
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -404,13 +519,105 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const sugerir = c => Math.round(c * (1 + MARKUP / 100) * 100) / 100;
 const typeLabel = t => t === 'product' ? 'produto' : 'serviço';
 const fmtData = d => new Date(d).toLocaleString('pt-BR');
+const hora = d => new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const erro = e => { const m = e.message || String(e); alert(/duplicate key/.test(m) ? 'Já existe um item com esse código.' : m); };
+const faltaDe = d => Number(d.total) - Number(d.paid);
 
-let me = { email: '', role: 'funcionario' }, products = [], services = [], lines = [], salesCache = [], clientsAll = [], clients = [], debts = [];
+let me = { email: '', role: 'funcionario' };
+let products = [], services = [], lines = [], salesCache = [], clientsAll = [], clients = [], debts = [];
+let comprasCache = [], usersCache = [], auditCache = [], hojeCount = 0;
 const isAdmin = () => me.role === 'admin';
-$('sPicker').innerHTML = pickerHTML('s'); $('dPicker').innerHTML = pickerHTML('d');
+
+/* ---------- ordenar tabelas clicando no título da coluna ---------- */
+const ORD = {}, RENDER = {};
+function ordenar(t, arr, get = {}) {
+  const o = ORD[t]; if (!o) return arr;
+  const f = get[o.k] || (x => x[o.k]);
+  return [...arr].sort((a, b) => {
+    let x = f(a), y = f(b); if (x == null) x = ''; if (y == null) y = '';
+    const r = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'pt-BR', { numeric: true });
+    return o.dir * r;
+  });
+}
+function marcarSetas() {
+  document.querySelectorAll('th[data-k]').forEach(th => {
+    const o = ORD[th.dataset.t], on = !!o && o.k === th.dataset.k;
+    th.classList.toggle('asc', on && o.dir === 1); th.classList.toggle('desc', on && o.dir === -1);
+  });
+}
+document.addEventListener('click', e => {
+  const th = e.target.closest('th[data-k]'); if (!th) return;
+  const t = th.dataset.t, o = ORD[t];
+  ORD[t] = { k: th.dataset.k, dir: o && o.k === th.dataset.k ? -o.dir : 1 };
+  marcarSetas(); RENDER[t] && RENDER[t]();
+});
+
+/* ---------- busca de cliente com lista suspensa ---------- */
+const PICK = {};
+function pickerHTML(p) {
+  return `<div class="picker">
+    <div class="row">
+      <label style="flex:3">Buscar cliente cadastrado <input id="${p}Q" placeholder="digite o nome, telefone, moto ou placa" autocomplete="off"></label>
+      <button type="button" class="btn ghost" id="${p}NewBtn">+ Novo cliente</button>
+    </div>
+    <div id="${p}List" class="dd hidden"></div>
+    <input type="hidden" id="${p}Client">
+    <div id="${p}Sel" class="hint"></div>
+    <div class="row hidden" id="${p}NewBox" style="margin-top:6px">
+      <label style="flex:2">Nome <input id="${p}NName"></label>
+      <label>Telefone <input id="${p}NPhone"></label>
+      <label>Moto (modelo) <input id="${p}NMoto"></label>
+      <label>Placa (opcional) <input id="${p}NPlate"></label>
+      <button type="button" class="btn" id="${p}NSave">Salvar cliente</button>
+    </div>
+  </div>`;
+}
+const casaCliente = (c, q) => !q || [c.name, c.phone, c.motorcycle, c.plate].join(' ').toLowerCase().includes(q);
+function mostrarLista(p) {
+  const q = $(p + 'Q').value.trim().toLowerCase();
+  const l = clients.filter(c => casaCliente(c, q)).slice(0, 8);
+  $(p + 'List').innerHTML = l.map(c => `<div data-id="${c.id}"><b>${esc(c.name)}</b> <span class="muted">${esc(c.phone || '')} ${esc(c.motorcycle || '')} ${c.plate ? '[' + esc(c.plate) + ']' : ''}</span></div>`).join('')
+    || '<div class="muted">Nenhum cliente encontrado. Use "+ Novo cliente".</div>';
+  $(p + 'List').classList.remove('hidden');
+}
+function escolher(p, c) {
+  $(p + 'Client').value = c ? c.id : '';
+  $(p + 'Q').value = c ? c.name : '';
+  $(p + 'Sel').textContent = c ? `✓ Cliente selecionado: ${c.name}` : '';
+  $(p + 'List').classList.add('hidden');
+  if (PICK[p]) PICK[p](c);
+}
+const limparPicker = p => escolher(p, null);
+function setupPicker(p, aoEscolher) {
+  PICK[p] = aoEscolher;
+  $(p + 'Q').addEventListener('input', () => { $(p + 'Client').value = ''; $(p + 'Sel').textContent = ''; mostrarLista(p); });
+  $(p + 'Q').addEventListener('focus', () => mostrarLista(p));
+  $(p + 'Q').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    const c = clients.find(x => casaCliente(x, $(p + 'Q').value.trim().toLowerCase())); if (c) escolher(p, c);
+  });
+  $(p + 'List').addEventListener('mousedown', e => { const d = e.target.closest('[data-id]'); if (d) escolher(p, clients.find(x => x.id == d.dataset.id)); });
+  $(p + 'NewBtn').onclick = () => $(p + 'NewBox').classList.toggle('hidden');
+  $(p + 'NSave').onclick = async () => {
+    const name = $(p + 'NName').value.trim();
+    if (!name) return alert('Digite o nome do cliente.');
+    const { data, error } = await db.from('clients').insert({
+      name, phone: $(p + 'NPhone').value.trim(), motorcycle: $(p + 'NMoto').value.trim(), plate: $(p + 'NPlate').value.trim().toUpperCase() || null
+    }).select().single();
+    if (error) return erro(error);
+    ['NName', 'NPhone', 'NMoto', 'NPlate'].forEach(i => $(p + i).value = '');
+    $(p + 'NewBox').classList.add('hidden');
+    await loadAll(); escolher(p, data);
+  };
+}
+document.addEventListener('click', e => document.querySelectorAll('.dd').forEach(dd => { if (!dd.closest('.picker').contains(e.target)) dd.classList.add('hidden'); }));
+const fillPickers = () => ['s', 'd', 'a'].forEach(p => { if ($(p + 'Client').value && !clients.find(c => c.id == $(p + 'Client').value)) limparPicker(p); });
+
+$('sPicker').innerHTML = pickerHTML('s'); $('dPicker').innerHTML = pickerHTML('d'); $('aPicker').innerHTML = pickerHTML('a');
 setupPicker('s', c => { if (c) { $('sCustomer').value = c.name; $('sMoto').value = c.motorcycle || ''; $('sPlate').value = c.plate || ''; } });
 setupPicker('d');
+setupPicker('a', c => { if (c) { $('aName').value = c.name; $('aMoto').value = c.motorcycle || ''; $('aPlate').value = c.plate || ''; } });
 
 /* ---------- login ---------- */
 async function start() {
@@ -420,6 +627,8 @@ async function start() {
   me = { email: session.user.email, role: p?.role || 'funcionario' };
   document.body.classList.toggle('is-admin', isAdmin());
   $('who').textContent = `${me.email} (${isAdmin() ? 'administrador' : 'funcionário'})`;
+  $('iPrice').readOnly = !isAdmin();
+  setMode(quick);
   $('login').classList.add('hidden'); $('app').classList.remove('hidden');
   await loadAll(); go('home');
 }
@@ -431,7 +640,6 @@ $('lBtn').onclick = async () => {
 };
 $('lPass').addEventListener('keydown', e => e.key === 'Enter' && $('lBtn').click());
 $('logout').onclick = async () => { await db.auth.signOut(); location.reload(); };
-start();
 
 /* ---------- senha ---------- */
 const urlSite = () => location.origin + location.pathname;
@@ -460,17 +668,20 @@ $('pwMail').onclick = async () => {
 db.auth.onAuthStateChange(ev => { if (ev === 'PASSWORD_RECOVERY') setTimeout(abrirSenha, 400); });
 
 /* ---------- navegação ---------- */
-const VIEWS = ['home', 'sale', 'history', 'products', 'services', 'clients', 'debtors', 'users', 'audit', 'analysis'];
+const VIEWS = ['home', 'sale', 'agenda', 'history', 'products', 'services', 'clients', 'debtors', 'analysis', 'users', 'audit'];
+const LIVRES = ['home', 'sale', 'agenda', 'clients'];   // o que o funcionário pode abrir
 function go(v) {
-  if (['users', 'audit', 'analysis'].includes(v) && !isAdmin()) v = 'home';
+  if (!isAdmin() && !LIVRES.includes(v)) v = 'home';
   VIEWS.forEach(x => $('v-' + x).classList.toggle('hidden', x !== v));
   if (v === 'home') renderHome();
   if (v === 'history') loadHistory();
-  if (v === 'users') loadUsers();
-  if (v === 'audit') loadAudit();
-  if (v === 'analysis') loadAnalise();
+  if (v === 'products') loadCompras();
   if (v === 'clients') renderClients();
   if (v === 'debtors') renderDebtors();
+  if (v === 'agenda') loadAgenda();
+  if (v === 'analysis') loadAnalise();
+  if (v === 'users') loadUsers();
+  if (v === 'audit') loadAudit();
   document.querySelectorAll('.nbtn').forEach(b => b.classList.toggle('on', b.dataset.go === v));
   scrollTo(0, 0);
 }
@@ -478,45 +689,59 @@ document.addEventListener('click', e => { const g = e.target.closest('[data-go]'
 
 /* ---------- carregar dados ---------- */
 async function loadAll() {
-  const [p, sv, c, d] = await Promise.all([
-    db.from('products').select('*').eq('active', true).order('name'),
+  const adm = isAdmin(), h = new Date(), ini = new Date(h.getFullYear(), h.getMonth(), h.getDate()), fim = new Date(+ini + 864e5);
+  const [p, sv, c, d, ag] = await Promise.all([
+    adm ? db.from('products').select('*').eq('active', true).order('name') : db.from('products_pub').select('*').eq('active', true).order('name'),
     db.from('services').select('*').eq('active', true).order('name'),
     db.from('clients').select('*').order('name'),
-    db.from('sales').select('id,numero,created_at,client_id,customer,total,paid,items').eq('payment', 'Fiado').eq('status', 'ativa').order('created_at')
+    adm ? db.from('sales').select('id,numero,created_at,client_id,customer,total,paid,items').eq('payment', 'Fiado').eq('status', 'ativa').order('created_at') : Promise.resolve({ data: [] }),
+    db.from('appointments').select('id').eq('status', 'agendado').gte('scheduled_at', ini.toISOString()).lt('scheduled_at', fim.toISOString())
   ]);
-  const e = p.error || sv.error || c.error || d.error;
+  const e = p.error || sv.error || c.error || d.error || ag.error;
   if (e) return erro('Erro no banco de dados: ' + e.message);
   products = p.data; services = sv.data; fillCats();
   clientsAll = c.data; clients = c.data.filter(x => x.active);
   debts = d.data.filter(x => faltaDe(x) > 0.004);
-  renderProducts(); renderServices(); fillItemSelect(); fillPickers(); renderClients(); renderDebtors(); renderHome();
+  hojeCount = ag.data.length;
+  renderProducts(); renderServices(); fillItemSelect(); fillCompraSel(); fillPickers(); renderClients(); renderDebtors(); renderHome();
 }
-
 function fillCats() {
   const cats = [...new Set([...products, ...services].map(x => x.category).filter(Boolean))].sort();
   $('catList').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+  $('servList').innerHTML = services.map(s => `<option value="${esc(s.name)}">`).join('');
 }
 
 /* ---------- início ---------- */
 function renderHome() {
   const falta = debts.reduce((t, d) => t + faltaDe(d), 0);
   $('debtTotal').textContent = falta > 0.004 ? `A receber: ${money(falta)}` : 'Fiado e valores a receber';
-  const low = products.filter(p => p.stock <= p.min_stock);
+  $('agTile').textContent = hojeCount ? `Hoje: ${hojeCount} serviço(s) agendado(s)` : 'Calendário de serviços';
+  const low = isAdmin() ? products.filter(p => p.stock <= p.min_stock) : [];
   $('lowStock').classList.toggle('hidden', !low.length);
   $('lowStock').innerHTML = low.length ? `<h2>Estoque baixo</h2><ul style="margin:0">${low.map(p =>
-    `<li>${esc(p.name)}: ${p.stock} un. (mínimo ${p.min_stock})</li>`).join('')}</ul>` : '';
+    `<li>${esc(p.name)}: ${p.stock} un. (aviso a partir de ${p.min_stock})</li>`).join('')}</ul>` : '';
 }
 
 /* ---------- produtos ---------- */
+function setModoProd(compra) {
+  $('formNovo').classList.toggle('hidden', compra); $('formCompra').classList.toggle('hidden', !compra);
+  $('modoNovo').classList.toggle('on', !compra); $('modoCompra').classList.toggle('on', compra);
+}
+$('modoNovo').onclick = () => setModoProd(false);
+$('modoCompra').onclick = () => setModoProd(true);
+
 function renderProducts() {
   const q = $('pQ').value.toLowerCase();
-  $('pBody').innerHTML = products.filter(p => !q || [p.code, p.name, p.category].join(' ').toLowerCase().includes(q)).map(p => `<tr class="${p.stock <= p.min_stock ? 'low' : ''}">
-    <td>${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.category)}</td><td class="num admin-only">${money(p.cost_price)}</td>
-    <td class="num">${money(p.sale_price)}</td><td class="num">${p.stock}</td>
-    <td class="num">${isAdmin() ? `<input type="number" min="0" value="${p.min_stock}" style="width:70px" onchange="setMin(${p.id}, this.value)">` : p.min_stock}</td>
-    <td class="num admin-only"><button class="btn ghost small" onclick="editar('products',${p.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('products',${p.id})">Arquivar</button></td></tr>`).join('')
-    || '<tr><td colspan="8" class="muted">Nenhum produto ainda.</td></tr>';
+  const l = ordenar('p', products.filter(p => !q || [p.code, p.name, p.category].join(' ').toLowerCase().includes(q)));
+  $('pBody').innerHTML = l.map(p => `<tr class="${p.stock <= p.min_stock ? 'low' : ''}">
+    <td>${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.category)}</td>
+    <td class="num">${money(p.cost_price)}</td><td class="num">${money(p.sale_price)}</td><td class="num">${p.stock}</td>
+    <td class="num"><input type="number" min="0" value="${p.min_stock}" style="width:70px" title="Avisa quando o estoque chegar a este número" onchange="setMin(${p.id}, this.value)"></td>
+    <td class="num"><button class="btn ghost small" onclick="editar('products',${p.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('products',${p.id})">Arquivar</button></td></tr>`).join('')
+    || '<tr><td colspan="8" class="muted">Nenhum produto encontrado.</td></tr>';
 }
+RENDER.p = renderProducts;
+$('pQ').addEventListener('input', renderProducts);
 async function setMin(id, v) {
   const { error } = await db.from('products').update({ min_stock: Math.max(0, parseInt(v) || 0) }).eq('id', id);
   if (error) erro(error); loadAll();
@@ -528,33 +753,78 @@ $('pCost').oninput = () => {
   $('pHint').textContent = `Preço de venda sugerido: ${money(sugerir(c))} (preço pago + ${MARKUP}%). Você pode alterar.`;
 };
 $('pMin').value = ESTOQUE_MIN_PADRAO;
-$('pQ').addEventListener('input', renderProducts);
 $('addProduct').onclick = async () => {
   const name = $('pName').value.trim();
   if (!name) return alert('Digite o nome do produto.');
-  const { error } = await db.from('products').insert({
+  const { data, error } = await db.from('products').insert({
     code: $('pCode').value.trim() || null, category: $('pCat').value.trim() || null,
     name, cost_price: +$('pCost').value || 0, sale_price: +$('pPrice').value || 0,
     stock: parseInt($('pStock').value) || 0, min_stock: parseInt($('pMin').value) || 0
-  });
+  }).select('code').single();
   if (error) return erro(error);
-  ['pCode', 'pCat', 'pName', 'pCost', 'pPrice'].forEach(i => $(i).value = ''); $('pStock').value = 0; $('pMin').value = ESTOQUE_MIN_PADRAO; $('pHint').textContent = '';
+  ['pCode', 'pCat', 'pName', 'pCost', 'pPrice'].forEach(i => $(i).value = ''); $('pStock').value = 0; $('pMin').value = ESTOQUE_MIN_PADRAO;
+  $('pHint').textContent = `Produto salvo. Código gerado: ${data.code}`;
   loadAll();
 };
 
+/* ---------- compras de estoque ---------- */
+function fillCompraSel() {
+  const q = $('buQ').value.trim().toLowerCase();
+  $('buProd').innerHTML = products.filter(p => !q || [p.code, p.name].join(' ').toLowerCase().includes(q))
+    .map(p => `<option value="${p.id}">${esc(p.code)} - ${esc(p.name)}</option>`).join('');
+  onCompraProd();
+}
+function onCompraProd() {
+  const p = products.find(x => x.id == $('buProd').value);
+  $('buCost').value = p ? p.cost_price : ''; $('buPrice').value = '';
+  $('buHint').textContent = p ? `Estoque atual: ${p.stock}. Preço de venda atual: ${money(p.sale_price)}.` : '';
+}
+$('buQ').addEventListener('input', fillCompraSel);
+$('buProd').addEventListener('change', onCompraProd);
+$('buCost').oninput = () => { const c = parseFloat($('buCost').value); if (!isNaN(c)) $('buPrice').value = sugerir(c).toFixed(2); };
+$('addCompra').onclick = async () => {
+  const id = Number($('buProd').value), qty = parseInt($('buQty').value), custo = parseFloat($('buCost').value), preco = parseFloat($('buPrice').value);
+  if (!id) return alert('Escolha o produto.');
+  if (!(qty > 0)) return alert('Digite a quantidade comprada.');
+  if (!(custo >= 0)) return alert('Digite o custo unitário.');
+  const { error } = await db.rpc('register_purchase', { p_product: id, p_qty: qty, p_unit_cost: custo, p_supplier: $('buSup').value.trim() || null, p_new_price: isNaN(preco) ? null : preco });
+  if (error) return erro(error);
+  $('buQty').value = ''; $('buQ').value = '';
+  await loadAll(); loadCompras();
+  $('buHint').textContent = 'Compra registrada. Estoque e custo atualizados.';
+};
+async function loadCompras() {
+  if (!isAdmin()) return;
+  const { data, error } = await db.from('purchases').select('*').order('created_at', { ascending: false }).limit(300);
+  if (error) return erro(error);
+  comprasCache = data;
+  $('supList').innerHTML = [...new Set(data.map(c => c.supplier).filter(Boolean))].map(s => `<option value="${esc(s)}">`).join('');
+  renderCompras();
+}
+function renderCompras() {
+  const l = ordenar('pur', comprasCache, { total: x => x.qty * x.unit_cost });
+  $('purBody').innerHTML = l.map(c => `<tr><td>${fmtData(c.created_at)}</td><td>${esc(c.product_name)}</td><td class="num">${c.qty}</td>
+    <td class="num">${money(c.unit_cost)}</td><td class="num">${money(c.qty * c.unit_cost)}</td><td>${esc(c.supplier)}</td><td>${esc(c.user_email)}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="muted">Nenhuma compra registrada ainda.</td></tr>';
+}
+RENDER.pur = renderCompras;
+
 /* ---------- serviços ---------- */
 function renderServices() {
-  $('svBody').innerHTML = services.map(s => `<tr>
+  $('svBody').innerHTML = ordenar('sv', services).map(s => `<tr>
     <td>${esc(s.code)}</td><td>${esc(s.name)}</td><td>${esc(s.category)}</td><td class="num">${money(s.price)}</td>
-    <td class="num admin-only"><button class="btn ghost small" onclick="editar('services',${s.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('services',${s.id})">Arquivar</button></td></tr>`).join('')
+    <td class="num"><button class="btn ghost small" onclick="editar('services',${s.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('services',${s.id})">Arquivar</button></td></tr>`).join('')
     || '<tr><td colspan="5" class="muted">Nenhum serviço ainda.</td></tr>';
 }
+RENDER.sv = renderServices;
 $('addService').onclick = async () => {
   const name = $('svName').value.trim();
   if (!name) return alert('Digite o nome do serviço.');
-  const { error } = await db.from('services').insert({ code: $('svCode').value.trim() || null, category: $('svCat').value.trim() || null, name, price: +$('svPrice').value || 0 });
+  const { data, error } = await db.from('services').insert({ code: $('svCode').value.trim() || null, category: $('svCat').value.trim() || null, name, price: +$('svPrice').value || 0 }).select('code').single();
   if (error) return erro(error);
-  ['svCode', 'svCat', 'svName', 'svPrice'].forEach(i => $(i).value = ''); loadAll();
+  ['svCode', 'svCat', 'svName', 'svPrice'].forEach(i => $(i).value = '');
+  $('svHint').textContent = `Serviço salvo. Código gerado: ${data.code}`;
+  loadAll();
 };
 async function arquivar(table, id) {
   if (!confirm('Arquivar este item? Ele sai das listas, mas as vendas antigas continuam intactas.')) return;
@@ -564,19 +834,33 @@ async function arquivar(table, id) {
 }
 
 /* ---------- nova venda ---------- */
+let quick = false;
+function setMode(q) {
+  quick = q;
+  $('v-sale').classList.toggle('quick', q);
+  $('modoOficina').classList.toggle('on', !q); $('modoRapida').classList.toggle('on', q);
+  $('sCardTitle').textContent = q ? 'Pagamento' : 'Cliente';
+  [...$('sPay').options].forEach(o => { o.hidden = o.disabled = (q || !isAdmin()) && o.value === 'Fiado'; });
+  if ($('sPay').selectedOptions[0]?.disabled) $('sPay').value = 'Dinheiro';
+  $('saveSalePrint').classList.toggle('ghost', q);
+}
+$('modoOficina').onclick = () => setMode(false);
+$('modoRapida').onclick = () => setMode(true);
+
 const casaItem = x => { const q = $('iQ').value.trim().toLowerCase(); return !q || (x.code || '').toLowerCase().includes(q) || x.name.toLowerCase().includes(q); };
 function fillItemSelect() {
   const isProd = $('iType').value === 'product';
   $('iItem').innerHTML = (isProd ? products : services).filter(casaItem).map(x => `<option value="${x.id}">${x.code ? esc(x.code) + ' - ' : ''}${esc(x.name)}</option>`).join('');
-  $('paidWrap').classList.toggle('hidden', !isProd);
+  $('paidWrap').classList.toggle('hidden', !isProd || !isAdmin());
   onItemChange();
 }
 function onItemChange() {
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
   if (!item) { $('iPaid').value = ''; $('iPrice').value = ''; return; }
-  if (isProd) { $('iPaid').value = item.cost_price; suggestPrice(); }
-  else $('iPrice').value = item.price;
+  if (!isProd) $('iPrice').value = item.price;
+  else if (isAdmin()) { $('iPaid').value = item.cost_price; suggestPrice(); }
+  else $('iPrice').value = item.sale_price;
 }
 function suggestPrice() {
   const paid = parseFloat($('iPaid').value);
@@ -598,7 +882,7 @@ $('addLine').onclick = () => {
   if (!item) return alert('Escolha um item primeiro.');
   lines.push({
     type: $('iType').value, id: item.id, code: item.code || null, name: item.name, qty: Math.max(1, parseInt($('iQty').value) || 1),
-    paid: isProd ? (+$('iPaid').value || 0) : null, price: +$('iPrice').value || 0
+    paid: isProd && isAdmin() ? (+$('iPaid').value || 0) : null, price: +$('iPrice').value || 0
   });
   $('iQty').value = 1; $('iQ').value = ''; fillItemSelect(); renderLines(); $('iQ').focus();
 };
@@ -610,19 +894,6 @@ function renderLines() {
     || '<tr><td colspan="5" class="muted">Nenhum item adicionado.</td></tr>';
   $('saleTotal').textContent = money(lines.reduce((t, l) => t + l.price * l.qty, 0));
 }
-let quick = false;
-function setMode(q) {
-  quick = q;
-  $('v-sale').classList.toggle('quick', q);
-  $('modoOficina').classList.toggle('on', !q); $('modoRapida').classList.toggle('on', q);
-  $('sCardTitle').textContent = q ? 'Pagamento' : 'Cliente';
-  [...$('sPay').options].forEach(o => { o.hidden = o.disabled = q && o.value === 'Fiado'; });
-  if (q && $('sPay').value === 'Fiado') $('sPay').value = 'Dinheiro';
-  $('saveSalePrint').classList.toggle('ghost', q);
-}
-$('modoOficina').onclick = () => setMode(false);
-$('modoRapida').onclick = () => setMode(true);
-
 async function salvarVenda(imprimir) {
   if (!lines.length) { $('sMsg').textContent = 'Adicione pelo menos um item.'; return; }
   if (!quick && $('sPay').value === 'Fiado' && !$('sClient').value) { $('sMsg').textContent = 'Escolha um cliente cadastrado para vender no fiado.'; return; }
@@ -635,7 +906,7 @@ async function salvarVenda(imprimir) {
   });
   document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = false);
   if (error) { $('sMsg').textContent = error.message; return; }
-  lines = []; ['sCustomer', 'sMoto', 'sPlate', 'sKm', 'sClient'].forEach(i => $(i).value = '');
+  lines = []; ['sCustomer', 'sMoto', 'sPlate', 'sKm'].forEach(i => $(i).value = ''); limparPicker('s');
   renderLines(); loadAll();
   if (imprimir) printReceipt(data);
   $('sMsg').textContent = `Venda nº ${data.numero} salva.`; $('sMsg').style.color = 'var(--ok)';
@@ -644,36 +915,58 @@ async function salvarVenda(imprimir) {
 $('saveSalePrint').onclick = () => salvarVenda(true);
 $('saveSaleQuick').onclick = () => salvarVenda(false);
 
-/* ---------- nota para impressão ---------- */
+/* ---------- nota para impressão (página inteira) ---------- */
 function printReceipt(s) {
   const balcao = s.customer === BALCAO_NOME;
   const itens = s.items.map(i => `<tr><td>${esc(i.name)}</td><td class="n">${i.qty}</td><td class="n">${money(i.price)}</td><td class="n">${money(i.price * i.qty)}</td></tr>`).join('');
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Nota ${s.numero ?? ''}</title><style>
-    body{font:13px/1.4 Arial,sans-serif;color:#000;max-width:360px;margin:0 auto;padding:12px}
-    h1{font-size:18px;text-align:center;margin:0}
-    .c{text-align:center;margin:2px 0}
-    hr{border:0;border-top:1px dashed #000;margin:10px 0}
-    table{width:100%;border-collapse:collapse}
-    th,td{text-align:left;padding:3px 0;vertical-align:top}
-    .n{text-align:right;white-space:nowrap;padding-left:6px}
-    .t{font-size:16px;font-weight:bold;text-align:right}
-    @page{margin:8mm}
-  </style></head><body>
-    <div style="display:flex;align-items:center;gap:10px">
-      ${NOTA_LOGO ? `<img src="${esc(new URL(NOTA_LOGO, location.href).href)}" alt="" style="max-height:56px;max-width:110px" onerror="this.remove()">` : ''}
-      <div style="flex:1"><h1>${esc(NOTA_NOME)}</h1>${NOTA_INFO ? `<p class="c">${esc(NOTA_INFO)}</p>` : ''}</div>
+  const nome = `<div class="nome">${esc(NOTA_NOME)}</div>`, nomeFb = `<div class=nome>${esc(NOTA_NOME)}</div>`;
+  const logo = NOTA_LOGO
+    ? `<img class="logo" src="${esc(new URL(NOTA_LOGO, location.href).href)}" alt="" onerror="this.outerHTML='${nomeFb}'">` : nome;
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Nota ${esc(s.numero ?? '')}</title><style>
+    @page{size:A4;margin:12mm}
+    *{box-sizing:border-box}
+    body{margin:0;font:14px/1.45 Arial,sans-serif;color:#000}
+    .page{min-height:268mm;display:flex;flex-direction:column}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding-bottom:14px;border-bottom:3px solid #000}
+    .logo{max-height:130px;max-width:320px;display:block}
+    .nome{font:700 34px Arial,sans-serif;letter-spacing:1px}
+    .info{margin-top:6px;font-size:13px}
+    .doc{text-align:right}
+    .doc .tit{font-size:20px;font-weight:700}
+    .doc .nr{font-size:30px;font-weight:700}
+    .canc{margin-top:6px;border:2px solid #000;padding:2px 8px;font-weight:700;display:inline-block}
+    .box{margin:16px 0;border:1px solid #000;padding:12px 14px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px 24px}
+    .box span{display:block;font-size:11px;text-transform:uppercase;color:#444}
+    .box div{font-size:15px;font-weight:700}
+    table{width:100%;border-collapse:collapse;margin-top:6px}
+    th{background:#e5e5e5;text-align:left;padding:8px;border:1px solid #000;font-size:13px}
+    td{padding:9px 8px;border:1px solid #999;vertical-align:top;font-size:14px}
+    .n{text-align:right;white-space:nowrap}
+    th.n{text-align:right}
+    .grow{flex:1}
+    .tot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;border-top:3px solid #000;padding-top:10px}
+    .tot .t{font-size:26px;font-weight:700}
+    .ass{display:flex;gap:40px;margin-top:60px}
+    .ass div{flex:1;border-top:1px solid #000;padding-top:4px;text-align:center;font-size:12px}
+    .rod{margin-top:22px;text-align:center;font-size:12px;color:#333}
+  </style></head><body><div class="page">
+    <div class="top">
+      <div>${logo}${NOTA_INFO ? `<div class="info">${esc(NOTA_INFO)}</div>` : ''}</div>
+      <div class="doc"><div class="tit">${balcao ? 'Comprovante de venda' : 'Nota de serviço'}</div><div class="nr">Nº ${esc(s.numero ?? '')}</div>
+        <div>${fmtData(s.created_at)}</div>${s.status === 'cancelada' ? '<div class="canc">VENDA CANCELADA</div>' : ''}</div>
     </div>
-    <p class="c">${balcao ? 'Comprovante de venda' : 'Nota de serviço e venda'} nº ${esc(s.numero ?? '')}</p>
-    ${s.status === 'cancelada' ? '<p class="c"><b>*** VENDA CANCELADA ***</b></p>' : ''}<hr>
-    <div>Data: ${fmtData(s.created_at)}</div>
-    ${balcao ? '' : `<div>Cliente: ${esc(s.customer) || '-'}</div>
-    <div>Moto: ${esc(s.motorcycle) || '-'}${s.plate ? ' - ' + esc(s.plate) : ''}</div>${s.km ? `<div>Km: ${esc(s.km)}</div>` : ''}`}
-    <div>Pagamento: ${esc(s.payment) || '-'}${s.payment === 'Fiado' ? ' (a pagar)' : ''}</div><hr>
-    <table><thead><tr><th>Item</th><th class="n">Qtd.</th><th class="n">Unit.</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table><hr>
-    <div class="t">Total: ${money(s.total)}</div><hr>
-    <p class="c">Obrigado pela preferência!</p>
-    <p class="c" style="font-size:11px">Documento sem valor fiscal.</p>
-  </body></html>`;
+    ${balcao ? '' : `<div class="box">
+      <div><span>Cliente</span>${esc(s.customer) || '-'}</div>
+      <div><span>Moto</span>${esc(s.motorcycle) || '-'}</div>
+      <div><span>Placa</span>${esc(s.plate) || '-'}</div>
+      <div><span>Quilometragem</span>${s.km ? Number(s.km).toLocaleString('pt-BR') + ' km' : '-'}</div>
+    </div>`}
+    <table><thead><tr><th>Descrição</th><th class="n">Qtd.</th><th class="n">Valor unit.</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table>
+    <div class="grow"></div>
+    <div class="tot"><div>Pagamento: <b>${esc(s.payment) || '-'}${s.payment === 'Fiado' ? ' (a pagar)' : ''}</b></div><div class="t">Total: ${money(s.total)}</div></div>
+    ${balcao ? '' : '<div class="ass"><div>Assinatura do cliente</div><div>Responsável</div></div>'}
+    <div class="rod">Obrigado pela preferência! &nbsp;·&nbsp; Documento sem valor fiscal.</div>
+  </div></body></html>`;
   const f = document.createElement('iframe');
   f.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0';
   document.body.appendChild(f);
@@ -685,6 +978,77 @@ function printReceipt(s) {
   }, 150));
 }
 
+/* ---------- agenda ---------- */
+const MESES_LONGOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const ST = { agendado: 'Agendado', concluido: 'Concluído', cancelado: 'Cancelado' };
+let agMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1), agDia = ymd(new Date()), agItens = [];
+async function loadAgenda() {
+  const y = agMes.getFullYear(), m = agMes.getMonth(), ini = new Date(y, m, 1 - new Date(y, m, 1).getDay()), fim = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + 42);
+  const { data, error } = await db.from('appointments').select('*').gte('scheduled_at', ini.toISOString()).lt('scheduled_at', fim.toISOString()).order('scheduled_at');
+  if (error) return erro(error);
+  agItens = data; renderAgenda();
+}
+function renderAgenda() {
+  const y = agMes.getFullYear(), m = agMes.getMonth(), hoje = ymd(new Date());
+  $('agTitulo').textContent = `${MESES_LONGOS[m]} de ${y}`;
+  const ini = new Date(y, m, 1 - new Date(y, m, 1).getDay()), porDia = {};
+  agItens.forEach(a => { const k = ymd(new Date(a.scheduled_at)); (porDia[k] = porDia[k] || []).push(a); });
+  let html = DOW.map(d => `<div class="dow">${d}</div>`).join('');
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + i), k = ymd(d), l = porDia[k] || [];
+    html += `<div class="day ${d.getMonth() !== m ? 'out' : ''} ${k === hoje ? 'today' : ''} ${k === agDia ? 'sel' : ''}" onclick="escolherDia('${k}')"><span class="n">${d.getDate()}</span>`
+      + l.slice(0, 2).map(a => `<div class="ev ${a.status}">${hora(a.scheduled_at)} ${esc(a.customer)}</div>`).join('')
+      + (l.length > 2 ? `<div class="muted">+${l.length - 2} mais</div>` : '') + '</div>';
+  }
+  $('agCal').innerHTML = html; renderDia();
+}
+function renderDia() {
+  const [y, m, d] = agDia.split('-').map(Number);
+  $('agDiaTitulo').textContent = new Date(y, m - 1, d).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const l = agItens.filter(a => ymd(new Date(a.scheduled_at)) === agDia);
+  $('agLista').innerHTML = l.map(a => `<div class="ag ${a.status}">
+    <div><b>${hora(a.scheduled_at)}</b> ${esc(a.customer)} <span class="tag">${ST[a.status]}</span></div>
+    <div class="muted">${esc(a.service || 'Serviço não informado')}${a.motorcycle ? ' · ' + esc(a.motorcycle) : ''}${a.plate ? ' · ' + esc(a.plate) : ''}</div>
+    ${a.notes ? `<div class="muted">${esc(a.notes)}</div>` : ''}
+    <div class="acts">${a.status === 'agendado'
+      ? `<button class="btn small" onclick="statusAg(${a.id},'concluido')">Concluir</button><button class="btn ghost small" onclick="statusAg(${a.id},'cancelado')">Cancelar</button>`
+      : `<button class="btn ghost small" onclick="statusAg(${a.id},'agendado')">Reabrir</button>`}
+      <button class="btn ghost small admin-only" onclick="excluirAg(${a.id})">Excluir</button></div></div>`).join('')
+    || '<p class="muted" style="margin:0">Nenhum serviço neste dia.</p>';
+}
+function escolherDia(k) {
+  agDia = k; const [y, m] = k.split('-').map(Number);
+  if (agMes.getFullYear() !== y || agMes.getMonth() !== m - 1) { agMes = new Date(y, m - 1, 1); loadAgenda(); } else renderAgenda();
+}
+$('agPrev').onclick = () => { agMes = new Date(agMes.getFullYear(), agMes.getMonth() - 1, 1); loadAgenda(); };
+$('agNext').onclick = () => { agMes = new Date(agMes.getFullYear(), agMes.getMonth() + 1, 1); loadAgenda(); };
+$('agHoje').onclick = () => escolherDia(ymd(new Date()));
+async function statusAg(id, status) {
+  const { error } = await db.from('appointments').update({ status }).eq('id', id);
+  if (error) return erro(error);
+  loadAgenda(); loadAll();
+}
+async function excluirAg(id) {
+  if (!confirm('Excluir este agendamento?')) return;
+  const { error } = await db.from('appointments').delete().eq('id', id);
+  if (error) return erro(error);
+  loadAgenda(); loadAll();
+}
+$('addAg').onclick = async () => {
+  const nome = $('aName').value.trim();
+  if (!nome) return alert('Escolha um cliente ou digite o nome.');
+  if (!$('aTime').value) return alert('Escolha a hora.');
+  const { error } = await db.from('appointments').insert({
+    scheduled_at: new Date(`${agDia}T${$('aTime').value}`).toISOString(), client_id: $('aClient').value ? Number($('aClient').value) : null,
+    customer: nome, motorcycle: $('aMoto').value.trim() || null, plate: $('aPlate').value.trim().toUpperCase() || null,
+    service: $('aServ').value.trim() || null, notes: $('aNote').value.trim() || null, created_by: me.email
+  });
+  if (error) return erro(error);
+  ['aName', 'aMoto', 'aPlate', 'aServ', 'aNote'].forEach(i => $(i).value = ''); limparPicker('a');
+  loadAgenda(); loadAll();
+};
+
 /* ---------- registro de vendas ---------- */
 async function loadHistory() {
   const { data, error } = await db.from('sales').select('*').order('created_at', { ascending: false }).limit(1000);
@@ -694,78 +1058,45 @@ async function loadHistory() {
 ['hQ', 'hFrom', 'hTo', 'hSt', 'hType'].forEach(id => $(id).addEventListener('input', renderHistory));
 function renderHistory() {
   const q = $('hQ').value.toLowerCase(), a = $('hFrom').value, b = $('hTo').value, st = $('hSt').value, ty = $('hType').value;
-  const rows = salesCache.filter(s => {
+  const rows = ordenar('h', salesCache.filter(s => {
     const d = new Date(s.created_at).toLocaleDateString('sv-SE');
     const txt = [s.numero, s.customer, s.motorcycle, s.plate, s.items.map(i => i.name).join(' ')].join(' ').toLowerCase();
     return (!q || txt.includes(q)) && (!a || d >= a) && (!b || d <= b) && (!st || s.status === st) && (!ty || (ty === 'balcao') === (s.customer === BALCAO_NOME));
-  });
+  }));
   const ativas = rows.filter(s => s.status === 'ativa');
   const total = ativas.reduce((t, s) => t + Number(s.total), 0);
   const lucro = ativas.reduce((t, s) => t + s.items.reduce((u, i) => u + (i.price - (i.paid || 0)) * i.qty, 0), 0);
-  $('hSummary').textContent = `${ativas.length} vendas ativas, ${money(total)} faturado` + (isAdmin() ? `, lucro estimado ${money(lucro)}` : '') + '.';
+  $('hSummary').textContent = `${ativas.length} vendas ativas, ${money(total)} faturado, lucro estimado ${money(lucro)}.`;
   $('hBody').innerHTML = rows.map(s => `<tr class="${s.status === 'cancelada' ? 'canceled' : ''}">
     <td>${s.numero}</td><td>${fmtData(s.created_at)}</td><td>${esc(s.customer)}</td>
-    <td>${esc(s.motorcycle)}${s.plate ? ' · ' + esc(s.plate) : ''}${s.km ? ' · ' + s.km + ' km' : ''}</td><td>${esc(s.payment)}${s.payment === 'Fiado' && s.total - s.paid > 0.004 ? ` (falta ${money(s.total - s.paid)})` : ''}</td>
+    <td>${esc(s.motorcycle)}${s.plate ? ' · ' + esc(s.plate) : ''}${s.km ? ' · ' + s.km + ' km' : ''}</td>
+    <td>${esc(s.payment)}${s.payment === 'Fiado' && s.total - s.paid > 0.004 ? ` (falta ${money(s.total - s.paid)})` : ''}</td>
     <td>${s.items.map(i => `${esc(i.name)} x${i.qty}`).join(', ')}</td>
     <td class="num">${money(s.total)}</td>
     <td class="num"><button class="btn ghost small" onclick="printReceipt(salesCache.find(x => x.id === ${s.id}))">Imprimir</button>
-      ${s.status === 'ativa' ? `<button class="btn ghost small admin-only" onclick="cancelar(${s.id})">Cancelar</button>` : ''}</td></tr>`).join('')
+      ${s.status === 'ativa' ? `<button class="btn ghost small" onclick="cancelar(${s.id})">Cancelar</button>` : ''}</td></tr>`).join('')
     || '<tr><td colspan="8" class="muted">Nenhuma venda encontrada.</td></tr>';
 }
+RENDER.h = renderHistory;
 async function cancelar(id) {
   if (!confirm('Cancelar esta venda? Os produtos voltam para o estoque.')) return;
   const { error } = await db.rpc('cancel_sale', { p_id: id });
   if (error) return erro(error);
-  await loadAll(); loadHistory();
+  await loadAll(); if (!$('v-history').classList.contains('hidden')) loadHistory();
 }
 
-/* ---------- clientes e devedores ---------- */
-const faltaDe = d => Number(d.total) - Number(d.paid);
-function pickerHTML(p) {
-  return `<div class="row">
-    <label style="flex:2">Buscar cliente cadastrado <input id="${p}Q" placeholder="nome, telefone ou moto" autocomplete="off"></label>
-    <label style="flex:2">Cliente <select id="${p}Client"></select></label>
-    <button type="button" class="btn ghost" id="${p}NewBtn">+ Novo cliente</button>
-  </div>
-  <div class="row hidden" id="${p}NewBox" style="margin-top:10px">
-    <label style="flex:2">Nome <input id="${p}NName"></label>
-    <label>Telefone <input id="${p}NPhone"></label>
-    <label>Moto (modelo) <input id="${p}NMoto"></label>
-    <label>Placa <input id="${p}NPlate"></label>
-    <button type="button" class="btn" id="${p}NSave">Salvar cliente</button>
-  </div>`;
-}
-function fillPicker(p, keep) {
-  const sel = $(p + 'Client'), q = $(p + 'Q').value.toLowerCase(), cur = keep ?? sel.value;
-  const lista = clients.filter(c => !q || [c.name, c.phone, c.motorcycle, c.plate].join(' ').toLowerCase().includes(q));
-  sel.innerHTML = `<option value="">${p === 's' ? 'Cliente avulso' : 'Escolha o cliente'}</option>` +
-    lista.map(c => `<option value="${c.id}">${esc(c.name)}${c.phone ? ' - ' + esc(c.phone) : ''}${c.plate ? ' [' + esc(c.plate) + ']' : ''}</option>`).join('');
-  sel.value = cur;
-}
-const fillPickers = () => { fillPicker('s'); fillPicker('d'); };
-function setupPicker(p, aoEscolher) {
-  $(p + 'Q').addEventListener('input', () => fillPicker(p));
-  $(p + 'Client').addEventListener('change', () => aoEscolher && aoEscolher(clients.find(x => x.id == $(p + 'Client').value)));
-  $(p + 'NewBtn').onclick = () => $(p + 'NewBox').classList.toggle('hidden');
-  $(p + 'NSave').onclick = async () => {
-    const name = $(p + 'NName').value.trim();
-    if (!name) return alert('Digite o nome do cliente.');
-    const { data, error } = await db.from('clients').insert({ name, phone: $(p + 'NPhone').value.trim(), motorcycle: $(p + 'NMoto').value.trim(), plate: $(p + 'NPlate').value.trim().toUpperCase() || null }).select().single();
-    if (error) return erro(error);
-    ['NName', 'NPhone', 'NMoto', 'NPlate'].forEach(i => $(p + i).value = '');
-    $(p + 'NewBox').classList.add('hidden'); $(p + 'Q').value = '';
-    await loadAll(); fillPicker(p, String(data.id)); aoEscolher && aoEscolher(data);
-  };
-}
+/* ---------- clientes ---------- */
 function renderClients() {
-  const q = $('cQ').value.toLowerCase();
-  $('cBody').innerHTML = clients.filter(c => !q || [c.name, c.phone, c.motorcycle, c.plate].join(' ').toLowerCase().includes(q)).map(c => {
-    const deve = debts.filter(d => d.client_id === c.id).reduce((t, d) => t + faltaDe(d), 0);
+  const q = $('cQ').value.toLowerCase(), adm = isAdmin();
+  const deveDe = c => debts.filter(d => d.client_id === c.id).reduce((t, d) => t + faltaDe(d), 0);
+  $('cBody').innerHTML = ordenar('c', clients.filter(c => casaCliente(c, q)), { deve: deveDe }).map(c => {
+    const deve = deveDe(c);
     return `<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.motorcycle)}</td><td>${esc(c.plate)}</td>
-      <td class="num">${deve > 0.004 ? `<b>${money(deve)}</b>` : '-'}</td>
-      <td class="num"><button class="btn ghost small" onclick="editar('clients',${c.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('clients',${c.id})">Arquivar</button></td></tr>`;
-  }).join('') || '<tr><td colspan="6" class="muted">Nenhum cliente encontrado.</td></tr>';
+      <td class="num admin-only">${deve > 0.004 ? `<b>${money(deve)}</b>` : '-'}</td>
+      <td class="num admin-only"><button class="btn ghost small" onclick="editar('clients',${c.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('clients',${c.id})">Arquivar</button></td></tr>`;
+  }).join('') || `<tr><td colspan="${adm ? 6 : 4}" class="muted">Nenhum cliente encontrado.</td></tr>`;
 }
+RENDER.c = renderClients;
 $('cQ').addEventListener('input', renderClients);
 $('addClient').onclick = async () => {
   const name = $('cName').value.trim();
@@ -777,19 +1108,23 @@ $('addClient').onclick = async () => {
   if (error) return erro(error);
   ['cName', 'cPhone', 'cMoto', 'cPlate', 'cAddr', 'cGender', 'cAge'].forEach(i => $(i).value = ''); $('cOpt').open = false; loadAll();
 };
+
+/* ---------- devedores ---------- */
+const nomeDe = d => (clientsAll.find(x => x.id === d.client_id) || {}).name || d.customer;
+const foneDe = d => (clientsAll.find(x => x.id === d.client_id) || {}).phone || '';
 function renderDebtors() {
   const falta = debts.reduce((t, d) => t + faltaDe(d), 0);
   const pessoas = new Set(debts.map(d => d.client_id ?? d.customer)).size;
   $('dSummary').textContent = debts.length ? `${money(falta)} a receber de ${pessoas} cliente(s).` : 'Ninguém devendo.';
-  $('dBody').innerHTML = debts.map(d => {
-    const c = clientsAll.find(x => x.id === d.client_id);
-    return `<tr><td>${esc(c ? c.name : d.customer)}</td><td>${esc(c?.phone)}</td><td>${d.numero}</td><td>${fmtData(d.created_at)}</td>
-      <td class="num">${money(d.total)}</td><td class="num">${money(d.paid)}</td><td class="num"><b>${money(faltaDe(d))}</b></td>
-      <td class="num"><button class="btn small" onclick="receber(${d.id}, ${faltaDe(d)})">Receber</button>
-        <button class="btn ghost small admin-only" onclick="editarDivida(${d.id})">Editar</button>
-        <button class="btn ghost small admin-only" onclick="cancelar(${d.id})">Cancelar</button></td></tr>`;
-  }).join('') || '<tr><td colspan="8" class="muted">Nenhum valor a receber.</td></tr>';
+  $('dBody').innerHTML = ordenar('d', debts, { nome: nomeDe, fone: foneDe, falta: faltaDe }).map(d => `<tr>
+    <td>${esc(nomeDe(d))}</td><td>${esc(foneDe(d))}</td><td>${d.numero}</td><td>${fmtData(d.created_at)}</td>
+    <td class="num">${money(d.total)}</td><td class="num">${money(d.paid)}</td><td class="num"><b>${money(faltaDe(d))}</b></td>
+    <td class="num"><button class="btn small" onclick="receber(${d.id}, ${faltaDe(d)})">Receber</button>
+      <button class="btn ghost small" onclick="editarDivida(${d.id})">Editar</button>
+      <button class="btn ghost small" onclick="cancelar(${d.id})">Cancelar</button></td></tr>`).join('')
+    || '<tr><td colspan="8" class="muted">Nenhum valor a receber.</td></tr>';
 }
+RENDER.d = renderDebtors;
 async function receber(id, falta) {
   const v = prompt('Valor recebido (R$):', falta.toFixed(2).replace('.', ','));
   if (v === null) return;
@@ -799,14 +1134,13 @@ async function receber(id, falta) {
   if (error) return erro(error);
   loadAll();
 }
-
 $('addDebt').onclick = async () => {
   const valor = parseFloat($('dAmount').value);
   if (!$('dClient').value) return alert('Escolha ou cadastre o cliente.');
   if (!(valor > 0)) return alert('Digite o valor da dívida.');
   const { error } = await db.rpc('add_debt', { p_client_id: Number($('dClient').value), p_description: $('dDesc').value.trim(), p_amount: valor, p_date: $('dDate').value || null });
   if (error) return erro(error);
-  ['dDesc', 'dAmount', 'dDate'].forEach(i => $(i).value = ''); loadAll();
+  ['dDesc', 'dAmount', 'dDate'].forEach(i => $(i).value = ''); limparPicker('d'); loadAll();
 };
 
 /* ---------- editar cadastros ---------- */
@@ -828,9 +1162,9 @@ function abrirDlg(titulo, campos, item, salvar) {
 const GENEROS = ['', 'Homem', 'Mulher', 'Outro'];
 const FAIXAS = ['', 'Menos de 20', '20 a 29', '30 a 39', '40 a 49', '50 a 59', '60 a 69', '70 ou mais'];
 const EDITAVEL = {
-  products: ['Editar produto', () => products, [['code', 'Código', 'text'], ['name', 'Nome', 'text'], ['category', 'Categoria', 'text'], ['cost_price', 'Preço pago (custo)', 'num'], ['sale_price', 'Preço de venda', 'num'], ['stock', 'Estoque', 'int'], ['min_stock', 'Estoque mínimo', 'int']]],
+  products: ['Editar produto', () => products, [['code', 'Código', 'text'], ['name', 'Nome', 'text'], ['category', 'Categoria', 'text'], ['cost_price', 'Preço pago (custo)', 'num'], ['sale_price', 'Preço de venda', 'num'], ['stock', 'Estoque', 'int'], ['min_stock', 'Estoque mínimo (aviso)', 'int']]],
   services: ['Editar serviço', () => services, [['code', 'Código', 'text'], ['name', 'Nome do serviço', 'text'], ['category', 'Categoria', 'text'], ['price', 'Preço', 'num']]],
-  clients:  ['Editar cliente', () => clients, [['name', 'Nome', 'text'], ['phone', 'Telefone', 'text'], ['motorcycle', 'Moto (modelo)', 'text'], ['plate', 'Placa', 'text'], ['address', 'Endereço', 'text'], ['gender', 'Sexo', GENEROS], ['age_range', 'Faixa etária', FAIXAS]]]
+  clients:  ['Editar cliente', () => clients, [['name', 'Nome', 'text'], ['phone', 'Telefone', 'text'], ['motorcycle', 'Moto (modelo)', 'text'], ['plate', 'Placa (opcional)', 'text'], ['address', 'Endereço', 'text'], ['gender', 'Sexo', GENEROS], ['age_range', 'Faixa etária', FAIXAS]]]
 };
 function editar(tabela, id) {
   const [titulo, lista, campos] = EDITAVEL[tabela];
@@ -859,7 +1193,6 @@ const PAL = ['#d9480f', '#1b2430', '#2b8a3e', '#1c7ed6', '#f08c00', '#7048e8', '
 let vendasAn = [], prodAn = [], servAn = [], charts = {}, graficosOn = ['tempo', 'top', 'categoria', 'pagamento'];
 try { graficosOn = JSON.parse(localStorage.getItem('graficos')) || graficosOn; } catch {}
 const catDe = i => (i.type === 'product' ? prodAn : servAn).find(x => x.id === i.id)?.category || (i.type === 'product' ? 'Sem categoria' : 'Serviços');
-
 function preencher(id, ops, atual) {
   const el = $(id);
   el.innerHTML = ops.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
@@ -901,12 +1234,10 @@ function renderAnalise() {
   const fat = L.reduce((t, l) => t + l.rec, 0), luc = L.reduce((t, l) => t + l.luc, 0), n = new Set(L.map(l => l.s.id)).size;
   $('anKpis').innerHTML = [['Faturamento', money(fat)], ['Lucro estimado', money(luc)], ['Vendas', n], ['Ticket médio', money(n ? fat / n : 0)]]
     .map(([t, v]) => `<div class="kpi"><span>${t}</span><b>${v}</b></div>`).join('');
-
   Object.values(charts).forEach(c => c.destroy()); charts = {};
   $('anCharts').innerHTML = graficosOn.filter(g => GRAFICOS[g]).map(g =>
     `<div class="card" style="margin:0"><h2>${GRAFICOS[g]}</h2><div style="position:relative;height:280px"><canvas id="ch_${g}"></canvas></div></div>`).join('')
     || '<p class="muted">Marque ao menos um gráfico acima.</p>';
-
   const soma = (arr, chave, val) => { const m = {}; arr.forEach(x => { const k = chave(x); m[k] = (m[k] || 0) + val(x); }); return m; };
   const top = (m, max = 10) => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, max);
   const desenhar = (g, tipo, pares, rotulo, horiz) => {
@@ -945,18 +1276,22 @@ function renderAnalise() {
 async function loadUsers() {
   const { data, error } = await db.from('profiles').select('*').order('created_at');
   if (error) return erro(error);
-  $('uBody').innerHTML = data.map(u => `<tr><td>${esc(u.email)}</td><td>${u.role === 'admin' ? 'Administrador' : 'Funcionário'}</td><td>${fmtData(u.created_at)}</td></tr>`).join('');
+  usersCache = data; renderUsers();
 }
+function renderUsers() {
+  $('uBody').innerHTML = ordenar('u', usersCache).map(u => `<tr><td>${esc(u.email)}</td><td>${u.role === 'admin' ? 'Administrador' : 'Funcionário'}</td><td>${fmtData(u.created_at)}</td></tr>`).join('');
+}
+RENDER.u = renderUsers;
 $('addUser').onclick = async () => {
   $('uMsg').textContent = ''; $('uMsg').style.color = '';
   const { error } = await db.functions.invoke('create-user', {
-    body: { email: $('uEmail').value.trim(), password: $('uPass').value, role: $('uRole').value }
+    body: { email: $('uEmail').value.trim(), password: $('uPass').value, role: $('uAdmin').checked ? 'admin' : 'funcionario' }
   });
   if (error) {
     let m = error.message; try { m = (await error.context.json()).error || m; } catch {}
     $('uMsg').textContent = m; return;
   }
-  $('uEmail').value = ''; $('uPass').value = '';
+  $('uEmail').value = ''; $('uPass').value = ''; $('uAdmin').checked = false;
   $('uMsg').textContent = 'Usuário criado.'; $('uMsg').style.color = 'var(--ok)';
   loadUsers();
 };
@@ -965,10 +1300,14 @@ $('addUser').onclick = async () => {
 async function loadAudit() {
   const { data, error } = await db.from('audit_log').select('*').order('created_at', { ascending: false }).limit(200);
   if (error) return erro(error);
-  $('aBody').innerHTML = data.map(a => `<tr><td>${fmtData(a.created_at)}</td><td>${esc(a.user_email)}</td><td>${esc(a.action)}</td>
+  auditCache = data; renderAudit();
+}
+function renderAudit() {
+  $('aBody').innerHTML = ordenar('a', auditCache).map(a => `<tr><td>${fmtData(a.created_at)}</td><td>${esc(a.user_email)}</td><td>${esc(a.action)}</td>
     <td>${esc(a.table_name)}</td><td class="muted" style="font-size:12px;word-break:break-all">${esc(JSON.stringify(a.details)).slice(0, 160)}</td></tr>`).join('')
     || '<tr><td colspan="5" class="muted">Nada registrado ainda.</td></tr>';
 }
+RENDER.a = renderAudit;
 
 /* ---------- baixar a base de dados inteira ---------- */
 async function todas(t) {
@@ -987,20 +1326,22 @@ function baixar(blob, nome) {
 }
 async function baixarBase() {
   try {
-    const tabelas = ['products', 'services', 'sales', 'clients', 'payments', 'audit_log', 'profiles'], dados = {};
+    const tabelas = ['products', 'services', 'sales', 'purchases', 'clients', 'payments', 'appointments', 'audit_log', 'profiles'], dados = {};
     for (const t of tabelas) dados[t] = await todas(t);
     const dia = new Date().toISOString().slice(0, 10);
-    baixar(new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' }), `backup-oficina-${dia}.json`);
+    baixar(new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' }), `backup-zecamotos-${dia}.json`);
     const wb = XLSX.utils.book_new();
     for (const t of tabelas) {
       const linhas = dados[t].map(r => ({ ...r, ...(r.items ? { items: JSON.stringify(r.items) } : {}), ...(r.details ? { details: JSON.stringify(r.details) } : {}) }));
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), t);
     }
-    XLSX.writeFile(wb, `backup-oficina-${dia}.xlsx`);
+    XLSX.writeFile(wb, `backup-zecamotos-${dia}.xlsx`);
   } catch (e) { erro(e); }
 }
 
 renderLines();
+marcarSetas();
+start();
 </script>
 </body>
 </html>
