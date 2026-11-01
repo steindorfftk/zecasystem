@@ -24,6 +24,7 @@
   label{display:flex;flex-direction:column;font-weight:600;font-size:13px;color:var(--muted);gap:4px;flex:1;min-width:130px}
   input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
   input[readonly]{background:#f3f4f6}
+  input[id$="Plate"],input[data-k="plate"]{text-transform:uppercase}
   input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   .btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:4px;padding:10px 18px;font:600 15px Barlow,sans-serif;cursor:pointer}
   .btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent)}
@@ -185,7 +186,6 @@
           </label>
           <label style="flex:2">Item <select id="iItem"></select></label>
           <label style="max-width:90px">Qtd. <input id="iQty" type="number" min="1" value="1"></label>
-          <label id="paidWrap">Preço pago (custo) <input id="iPaid" type="number" min="0" step="0.01"></label>
           <label>Preço de venda <input id="iPrice" type="number" min="0" step="0.01"></label>
           <button class="btn" id="addLine">Adicionar</button>
         </div>
@@ -198,6 +198,7 @@
         </table></div>
         <div class="total" id="saleTotal">R$ 0,00</div>
         <div class="row" style="justify-content:flex-end;margin-top:12px">
+          <label class="chip oficina-only" style="margin-right:auto"><input type="checkbox" id="sKeep"> Manter os dados do cliente depois de salvar</label>
           <span class="msg" id="sMsg"></span>
           <button class="btn quick-only" id="saveSaleQuick">Salvar venda</button>
           <button class="btn" id="saveSalePrint">Salvar e imprimir nota</button>
@@ -290,12 +291,12 @@
             <label style="flex:2">Buscar produto (código ou nome) <input id="buQ" autocomplete="off"></label>
             <label style="flex:2">Produto <select id="buProd"></select></label>
             <label style="max-width:110px">Quantidade <input id="buQty" type="number" min="1" step="1"></label>
-            <label>Custo unitário (R$) <input id="buCost" type="number" min="0" step="0.01"></label>
+            <label>Custo unitário desta compra (R$) <input id="buCost" type="number" min="0" step="0.01"></label>
             <label>Novo preço de venda <input id="buPrice" type="number" min="0" step="0.01" placeholder="não alterar"></label>
             <label>Fornecedor <input id="buSup" list="supList"></label>
             <button class="btn" id="addCompra">Registrar compra</button>
           </div>
-          <div class="help" style="margin-top:8px">A quantidade é somada ao estoque e o custo do produto passa a ser o desta compra. Ao digitar o custo, o preço de venda é sugerido (custo + 30%); apague o campo para não mudar o preço.</div>
+          <div class="help" style="margin-top:8px">A quantidade é somada ao estoque e o custo do produto passa a ser a média entre o que já estava em estoque e esta compra (ex.: 10 un. a R$ 5 + 10 un. a R$ 7 = custo médio R$ 6). O preço de venda é sugerido em cima do novo custo médio (+30%); apague o campo para não mudar o preço.</div>
           <div class="hint" id="buHint"></div>
         </div>
       </div>
@@ -306,7 +307,7 @@
         <div class="overflow"><table>
           <thead><tr>
             <th data-t="p" data-k="code">Código</th><th data-t="p" data-k="name">Nome</th><th data-t="p" data-k="category">Categoria</th>
-            <th class="num" data-t="p" data-k="cost_price">Custo</th><th class="num" data-t="p" data-k="sale_price">Preço de venda</th>
+            <th class="num" data-t="p" data-k="cost_price">Custo médio</th><th class="num" data-t="p" data-k="sale_price">Preço de venda</th>
             <th class="num" data-t="p" data-k="stock">Estoque</th><th class="num" data-t="p" data-k="min_stock">Mínimo (aviso)</th><th></th></tr></thead>
           <tbody id="pBody"></tbody>
         </table></div>
@@ -528,6 +529,11 @@ let me = { email: '', role: 'funcionario' };
 let products = [], services = [], lines = [], salesCache = [], clientsAll = [], clients = [], debts = [];
 let comprasCache = [], usersCache = [], auditCache = [], hojeCount = 0;
 const isAdmin = () => me.role === 'admin';
+
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.matches && t.matches('input[id$="Plate"],input[data-k="plate"]')) { const p = t.selectionStart; t.value = t.value.toUpperCase(); try { t.setSelectionRange(p, p); } catch {} }
+});
 
 /* ---------- ordenar tabelas clicando no título da coluna ---------- */
 const ORD = {}, RENDER = {};
@@ -777,11 +783,18 @@ function fillCompraSel() {
 function onCompraProd() {
   const p = products.find(x => x.id == $('buProd').value);
   $('buCost').value = p ? p.cost_price : ''; $('buPrice').value = '';
-  $('buHint').textContent = p ? `Estoque atual: ${p.stock}. Preço de venda atual: ${money(p.sale_price)}.` : '';
+  $('buHint').textContent = p ? `Estoque atual: ${p.stock}. Custo médio atual: ${money(p.cost_price)}. Preço de venda atual: ${money(p.sale_price)}.` : '';
 }
 $('buQ').addEventListener('input', fillCompraSel);
 $('buProd').addEventListener('change', onCompraProd);
-$('buCost').oninput = () => { const c = parseFloat($('buCost').value); if (!isNaN(c)) $('buPrice').value = sugerir(c).toFixed(2); };
+function previaCompra() {
+  const p = products.find(x => x.id == $('buProd').value), q = parseInt($('buQty').value), c = parseFloat($('buCost').value);
+  if (!p || !(q > 0) || isNaN(c)) return;
+  const novo = p.stock > 0 ? Math.round((p.stock * p.cost_price + q * c) / (p.stock + q) * 100) / 100 : c;
+  $('buPrice').value = sugerir(novo).toFixed(2);
+  $('buHint').textContent = `Custo médio: ${money(p.cost_price)} → ${money(novo)} (estoque ${p.stock} + ${q}). Preço de venda sugerido: ${money(sugerir(novo))}.`;
+}
+$('buCost').oninput = previaCompra; $('buQty').oninput = previaCompra;
 $('addCompra').onclick = async () => {
   const id = Number($('buProd').value), qty = parseInt($('buQty').value), custo = parseFloat($('buCost').value), preco = parseFloat($('buPrice').value);
   if (!id) return alert('Escolha o produto.');
@@ -791,7 +804,7 @@ $('addCompra').onclick = async () => {
   if (error) return erro(error);
   $('buQty').value = ''; $('buQ').value = '';
   await loadAll(); loadCompras();
-  $('buHint').textContent = 'Compra registrada. Estoque e custo atualizados.';
+  $('buHint').textContent = 'Compra registrada. Estoque atualizado e custo médio recalculado.';
 };
 async function loadCompras() {
   if (!isAdmin()) return;
@@ -835,6 +848,8 @@ async function arquivar(table, id) {
 
 /* ---------- nova venda ---------- */
 let quick = false;
+try { $('sKeep').checked = localStorage.getItem('manterCliente') === '1'; } catch {}
+$('sKeep').onchange = () => { try { localStorage.setItem('manterCliente', $('sKeep').checked ? '1' : '0'); } catch {} };
 function setMode(q) {
   quick = q;
   $('v-sale').classList.toggle('quick', q);
@@ -851,24 +866,15 @@ const casaItem = x => { const q = $('iQ').value.trim().toLowerCase(); return !q 
 function fillItemSelect() {
   const isProd = $('iType').value === 'product';
   $('iItem').innerHTML = (isProd ? products : services).filter(casaItem).map(x => `<option value="${x.id}">${x.code ? esc(x.code) + ' - ' : ''}${esc(x.name)}</option>`).join('');
-  $('paidWrap').classList.toggle('hidden', !isProd || !isAdmin());
   onItemChange();
 }
 function onItemChange() {
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
-  if (!item) { $('iPaid').value = ''; $('iPrice').value = ''; return; }
-  if (!isProd) $('iPrice').value = item.price;
-  else if (isAdmin()) { $('iPaid').value = item.cost_price; suggestPrice(); }
-  else $('iPrice').value = item.sale_price;
-}
-function suggestPrice() {
-  const paid = parseFloat($('iPaid').value);
-  if (!isNaN(paid)) $('iPrice').value = sugerir(paid).toFixed(2);
+  $('iPrice').value = item ? (isProd ? item.sale_price : item.price) : '';
 }
 $('iType').onchange = fillItemSelect;
 $('iItem').onchange = onItemChange;
-$('iPaid').oninput = suggestPrice;
 $('iQ').addEventListener('input', () => {
   const prod = $('iType').value === 'product', cur = prod ? products : services, outra = prod ? services : products;
   if ($('iQ').value.trim() && !cur.some(casaItem) && outra.some(casaItem)) $('iType').value = prod ? 'service' : 'product';
@@ -882,7 +888,7 @@ $('addLine').onclick = () => {
   if (!item) return alert('Escolha um item primeiro.');
   lines.push({
     type: $('iType').value, id: item.id, code: item.code || null, name: item.name, qty: Math.max(1, parseInt($('iQty').value) || 1),
-    paid: isProd && isAdmin() ? (+$('iPaid').value || 0) : null, price: +$('iPrice').value || 0
+    paid: null, price: +$('iPrice').value || 0
   });
   $('iQty').value = 1; $('iQ').value = ''; fillItemSelect(); renderLines(); $('iQ').focus();
 };
@@ -902,11 +908,12 @@ async function salvarVenda(imprimir) {
   const { data, error } = await db.rpc('create_sale', {
     p_customer: quick ? BALCAO_NOME : $('sCustomer').value.trim(), p_motorcycle: quick ? '' : $('sMoto').value.trim(), p_payment: $('sPay').value, p_items: lines,
     p_client_id: !quick && $('sClient').value ? Number($('sClient').value) : null,
-    p_plate: quick ? null : ($('sPlate').value.trim() || null), p_km: quick ? null : (parseInt($('sKm').value) || null)
+    p_plate: quick ? null : ($('sPlate').value.trim().toUpperCase() || null), p_km: quick ? null : (parseInt($('sKm').value) || null)
   });
   document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = false);
   if (error) { $('sMsg').textContent = error.message; return; }
-  lines = []; ['sCustomer', 'sMoto', 'sPlate', 'sKm'].forEach(i => $(i).value = ''); limparPicker('s');
+  lines = [];
+  if (!$('sKeep').checked) { ['sCustomer', 'sMoto', 'sPlate', 'sKm'].forEach(i => $(i).value = ''); limparPicker('s'); }
   renderLines(); loadAll();
   if (imprimir) printReceipt(data);
   $('sMsg').textContent = `Venda nº ${data.numero} salva.`; $('sMsg').style.color = 'var(--ok)';
@@ -1162,7 +1169,7 @@ function abrirDlg(titulo, campos, item, salvar) {
 const GENEROS = ['', 'Homem', 'Mulher', 'Outro'];
 const FAIXAS = ['', 'Menos de 20', '20 a 29', '30 a 39', '40 a 49', '50 a 59', '60 a 69', '70 ou mais'];
 const EDITAVEL = {
-  products: ['Editar produto', () => products, [['code', 'Código', 'text'], ['name', 'Nome', 'text'], ['category', 'Categoria', 'text'], ['cost_price', 'Preço pago (custo)', 'num'], ['sale_price', 'Preço de venda', 'num'], ['stock', 'Estoque', 'int'], ['min_stock', 'Estoque mínimo (aviso)', 'int']]],
+  products: ['Editar produto', () => products, [['code', 'Código', 'text'], ['name', 'Nome', 'text'], ['category', 'Categoria', 'text'], ['cost_price', 'Custo médio', 'num'], ['sale_price', 'Preço de venda', 'num'], ['stock', 'Estoque', 'int'], ['min_stock', 'Estoque mínimo (aviso)', 'int']]],
   services: ['Editar serviço', () => services, [['code', 'Código', 'text'], ['name', 'Nome do serviço', 'text'], ['category', 'Categoria', 'text'], ['price', 'Preço', 'num']]],
   clients:  ['Editar cliente', () => clients, [['name', 'Nome', 'text'], ['phone', 'Telefone', 'text'], ['motorcycle', 'Moto (modelo)', 'text'], ['plate', 'Placa (opcional)', 'text'], ['address', 'Endereço', 'text'], ['gender', 'Sexo', GENEROS], ['age_range', 'Faixa etária', FAIXAS]]]
 };
