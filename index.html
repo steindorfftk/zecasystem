@@ -27,6 +27,13 @@
   .seg .btn.on{background:var(--accent);color:var(--accent-ink)}
   #v-sale:not(.quick) .quick-only{display:none!important}
   #v-sale.quick .oficina-only{display:none!important}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+  .kpi b{display:block;font:700 28px 'Barlow Condensed',sans-serif}
+  .kpi span{color:var(--muted);font-size:13px}
+  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:16px}
+  .chip{flex-direction:row;align-items:center;gap:6px;flex:none;min-width:0;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer;background:#fff;color:var(--ink)}
+  details.opt summary{cursor:pointer;color:var(--muted);font-weight:600}
   main{max-width:1000px;margin:24px auto;padding:0 16px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:20px}
   .card h2{font-size:22px;margin-bottom:12px}
@@ -68,6 +75,7 @@
       <label>E-mail <input id="lUser" type="email" autocomplete="username"></label>
       <label>Senha <input id="lPass" type="password" autocomplete="current-password"></label>
       <button class="btn" id="lBtn">Entrar</button>
+      <button class="btn ghost small" id="forgotBtn" type="button">Esqueci minha senha</button>
       <div class="msg" id="lMsg"></div>
     </div>
   </div>
@@ -77,6 +85,7 @@
   <header>
     <h1 data-go="home">Oficina do Zeca</h1>
     <span id="who"></span>
+    <button class="btn ghost small" id="pwdBtn" style="color:#fff;border-color:#fff">Alterar senha</button>
     <button class="btn ghost small" id="logout" style="color:#fff;border-color:#fff">Sair</button>
     <nav class="nav">
       <button class="nbtn" data-go="home">Início</button>
@@ -86,6 +95,7 @@
       <button class="nbtn" data-go="services">Serviços</button>
       <button class="nbtn" data-go="clients">Clientes</button>
       <button class="nbtn" data-go="debtors">Devedores</button>
+      <button class="nbtn admin-only" data-go="analysis">Análises</button>
     </nav>
   </header>
   <main>
@@ -99,6 +109,7 @@
         <button class="tile" data-go="services"><b>Serviços</b><span>Serviços e preços personalizados</span></button>
         <button class="tile" data-go="clients"><b>Clientes</b><span>Cadastro de clientes e motos</span></button>
         <button class="tile" data-go="debtors"><b>Devedores</b><span id="debtTotal">Fiado e valores a receber</span></button>
+        <button class="tile admin-only" data-go="analysis"><b>Análises</b><span>Gráficos de vendas, lucro e clientes</span></button>
       </div>
       <div class="card hidden" id="lowStock"></div>
       <div class="adm admin-only"><span class="muted">Administração:</span>
@@ -123,7 +134,9 @@
         <div class="row">
           <div id="sPicker" class="oficina-only" style="flex:1 1 100%"></div>
           <label class="oficina-only">Nome do cliente <input id="sCustomer"></label>
-          <label class="oficina-only">Moto <input id="sMoto" placeholder="ex.: Honda CG 160"></label>
+          <label class="oficina-only">Moto (modelo) <input id="sMoto" placeholder="ex.: Honda CG 160"></label>
+          <label class="oficina-only">Placa <input id="sPlate" placeholder="ABC1D23"></label>
+          <label class="oficina-only">Quilometragem (km) <input id="sKm" type="number" min="0" step="1" placeholder="opcional"></label>
           <label>Pagamento
             <select id="sPay"><option>Dinheiro</option><option>Pix</option><option>Cartão de débito</option><option>Cartão de crédito</option><option>Fiado</option></select>
           </label>
@@ -132,6 +145,7 @@
       <div class="card">
         <h2>Adicionar item</h2>
         <div class="row">
+          <label style="flex:2">Buscar por código ou nome <input id="iQ" autocomplete="off" placeholder="ex.: P0012 ou óleo"></label>
           <label>Tipo
             <select id="iType"><option value="product">Produto</option><option value="service">Serviço</option></select>
           </label>
@@ -183,7 +197,9 @@
       <div class="card admin-only">
         <h2>Cadastrar produto</h2>
         <div class="row">
+          <label style="max-width:120px">Código <input id="pCode" placeholder="automático"></label>
           <label style="flex:2">Nome <input id="pName"></label>
+          <label>Categoria <input id="pCat" list="catList" placeholder="ex.: Bebidas"></label>
           <label>Preço pago (custo) <input id="pCost" type="number" min="0" step="0.01"></label>
           <label>Preço de venda <input id="pPrice" type="number" min="0" step="0.01"></label>
           <label style="max-width:100px">Estoque <input id="pStock" type="number" min="0" value="0"></label>
@@ -194,9 +210,10 @@
       </div>
       <div class="card">
         <h2>Produtos disponíveis</h2>
+        <label>Buscar por código, nome ou categoria <input id="pQ"></label>
         <div class="muted">Linhas em laranja estão com estoque igual ou abaixo do mínimo.</div>
         <div class="overflow"><table>
-          <thead><tr><th>Nome</th><th class="num admin-only">Custo</th><th class="num">Preço de venda</th><th class="num">Estoque</th><th class="num">Mínimo</th><th class="admin-only"></th></tr></thead>
+          <thead><tr><th>Código</th><th>Nome</th><th>Categoria</th><th class="num admin-only">Custo</th><th class="num">Preço de venda</th><th class="num">Estoque</th><th class="num">Mínimo</th><th class="admin-only"></th></tr></thead>
           <tbody id="pBody"></tbody>
         </table></div>
       </div>
@@ -208,7 +225,9 @@
       <div class="card admin-only">
         <h2>Adicionar serviço personalizado</h2>
         <div class="row">
+          <label style="max-width:120px">Código <input id="svCode" placeholder="automático"></label>
           <label style="flex:2">Nome do serviço <input id="svName"></label>
+          <label>Categoria <input id="svCat" list="catList" placeholder="ex.: Mecânica"></label>
           <label>Preço <input id="svPrice" type="number" min="0" step="0.01"></label>
           <button class="btn" id="addService">Salvar</button>
         </div>
@@ -216,7 +235,7 @@
       <div class="card">
         <h2>Serviços oferecidos</h2>
         <div class="overflow"><table>
-          <thead><tr><th>Serviço</th><th class="num">Preço</th><th class="admin-only"></th></tr></thead>
+          <thead><tr><th>Código</th><th>Serviço</th><th>Categoria</th><th class="num">Preço</th><th class="admin-only"></th></tr></thead>
           <tbody id="svBody"></tbody>
         </table></div>
       </div>
@@ -230,15 +249,24 @@
         <div class="row">
           <label style="flex:2">Nome <input id="cName"></label>
           <label>Telefone <input id="cPhone"></label>
-          <label>Moto / placa <input id="cMoto"></label>
-          <button class="btn" id="addClient">Salvar</button>
+          <label>Moto (modelo) <input id="cMoto"></label>
+          <label>Placa <input id="cPlate" placeholder="ABC1D23"></label>
         </div>
+        <details class="opt" id="cOpt" style="margin:14px 0">
+          <summary>Dados opcionais (endereço, sexo e faixa etária, para análises de marketing)</summary>
+          <div class="row" style="margin-top:10px">
+            <label style="flex:3">Endereço <input id="cAddr"></label>
+            <label>Sexo <select id="cGender"><option value="">Não informar</option><option>Homem</option><option>Mulher</option><option>Outro</option></select></label>
+            <label>Faixa etária <select id="cAge"><option value="">Não informar</option><option>Menos de 20</option><option>20 a 29</option><option>30 a 39</option><option>40 a 49</option><option>50 a 59</option><option>60 a 69</option><option>70 ou mais</option></select></label>
+          </div>
+        </details>
+        <button class="btn" id="addClient">Salvar cliente</button>
       </div>
       <div class="card">
         <h2>Clientes</h2>
         <label>Buscar <input id="cQ" placeholder="nome, telefone ou moto"></label>
         <div class="overflow"><table>
-          <thead><tr><th>Nome</th><th>Telefone</th><th>Moto / placa</th><th class="num">Deve</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Telefone</th><th>Moto</th><th>Placa</th><th class="num">Deve</th><th></th></tr></thead>
           <tbody id="cBody"></tbody>
         </table></div>
       </div>
@@ -271,6 +299,24 @@
           <tbody id="dBody"></tbody>
         </table></div>
       </div>
+    </div>
+
+    <!-- ANÁLISES -->
+    <div id="v-analysis" class="hidden">
+      <div style="margin-bottom:12px"><button class="btn ghost small" data-go="home">← Voltar ao início</button></div>
+      <div class="card">
+        <h2>Análises</h2>
+        <div class="row">
+          <label>Ano <select id="anAno"></select></label>
+          <label>Mês <select id="anMes"></select></label>
+          <label>Categoria <select id="anCat"></select></label>
+          <label style="flex:2">Produto ou serviço <select id="anItem"></select></label>
+          <label>Tipo de venda <select id="anTipo"><option value="">Todas</option><option value="oficina">Oficina</option><option value="balcao">Balcão</option></select></label>
+        </div>
+        <div id="anChips" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
+      </div>
+      <div class="kpis" id="anKpis"></div>
+      <div class="charts" id="anCharts"></div>
     </div>
 
     <!-- USUÁRIOS -->
@@ -312,6 +358,21 @@
   </main>
 </div>
 
+<datalist id="catList"></datalist>
+
+<dialog id="pwdDlg" class="card">
+  <h2>Alterar senha</h2>
+  <div class="row" style="flex-direction:column;align-items:stretch">
+    <label>Nova senha (mínimo 8 caracteres) <input id="pw1" type="password" autocomplete="new-password"></label>
+    <label>Repita a nova senha <input id="pw2" type="password" autocomplete="new-password"></label>
+    <div class="msg" id="pwMsg"></div>
+  </div>
+  <div class="row" style="justify-content:space-between;margin-top:14px">
+    <button class="btn ghost small" id="pwMail">Receber link por e-mail</button>
+    <span class="row"><button class="btn ghost" onclick="$('pwdDlg').close()">Cancelar</button><button class="btn" id="pwSave">Salvar senha</button></span>
+  </div>
+</dialog>
+
 <dialog id="dlg" class="card">
   <h2 id="dlgTitle"></h2>
   <div id="dlgFields" class="row" style="flex-direction:column;align-items:stretch"></div>
@@ -323,6 +384,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <script>
 /* ================== CONFIGURAÇÃO ================== */
 const SUPABASE_URL = 'https://ayrpnksfqtweauycbptr.supabase.co';
@@ -331,6 +393,7 @@ const MARKUP = 30;                 // preço sugerido = preço pago + 30%
 const ESTOQUE_MIN_PADRAO = 5;      // valor inicial do estoque mínimo ao cadastrar produto
 const NOTA_NOME = 'Oficina do Zeca';
 const NOTA_INFO = '';              // ex.: 'Rua das Flores, 123 - Tel. (11) 99999-9999'
+const NOTA_LOGO = 'logo.png';       // arquivo do logo, na mesma pasta do index.html (deixe '' para não usar)
 const BALCAO_NOME = 'Venda de balcão';   // nome neutro usado nas vendas rápidas
 /* ================================================== */
 
@@ -341,12 +404,12 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const sugerir = c => Math.round(c * (1 + MARKUP / 100) * 100) / 100;
 const typeLabel = t => t === 'product' ? 'produto' : 'serviço';
 const fmtData = d => new Date(d).toLocaleString('pt-BR');
-const erro = e => alert(e.message || e);
+const erro = e => { const m = e.message || String(e); alert(/duplicate key/.test(m) ? 'Já existe um item com esse código.' : m); };
 
 let me = { email: '', role: 'funcionario' }, products = [], services = [], lines = [], salesCache = [], clientsAll = [], clients = [], debts = [];
 const isAdmin = () => me.role === 'admin';
 $('sPicker').innerHTML = pickerHTML('s'); $('dPicker').innerHTML = pickerHTML('d');
-setupPicker('s', c => { if (c) { $('sCustomer').value = c.name; $('sMoto').value = c.motorcycle || ''; } });
+setupPicker('s', c => { if (c) { $('sCustomer').value = c.name; $('sMoto').value = c.motorcycle || ''; $('sPlate').value = c.plate || ''; } });
 setupPicker('d');
 
 /* ---------- login ---------- */
@@ -361,7 +424,7 @@ async function start() {
   await loadAll(); go('home');
 }
 $('lBtn').onclick = async () => {
-  $('lMsg').textContent = '';
+  $('lMsg').textContent = ''; $('lMsg').style.color = '';
   const { error } = await db.auth.signInWithPassword({ email: $('lUser').value.trim(), password: $('lPass').value });
   if (error) { $('lMsg').textContent = 'E-mail ou senha incorretos.'; return; }
   start();
@@ -370,15 +433,42 @@ $('lPass').addEventListener('keydown', e => e.key === 'Enter' && $('lBtn').click
 $('logout').onclick = async () => { await db.auth.signOut(); location.reload(); };
 start();
 
+/* ---------- senha ---------- */
+const urlSite = () => location.origin + location.pathname;
+$('forgotBtn').onclick = async () => {
+  const email = $('lUser').value.trim();
+  if (!email) { $('lMsg').textContent = 'Digite seu e-mail no campo acima e clique de novo.'; return; }
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: urlSite() });
+  $('lMsg').style.color = error ? '' : 'var(--ok)';
+  $('lMsg').textContent = error ? error.message : 'Se o e-mail estiver cadastrado, enviamos um link para criar uma nova senha.';
+};
+function abrirSenha() { ['pw1', 'pw2'].forEach(i => $(i).value = ''); $('pwMsg').textContent = ''; $('pwMsg').style.color = ''; $('pwdDlg').showModal(); }
+$('pwdBtn').onclick = abrirSenha;
+$('pwSave').onclick = async () => {
+  const a = $('pw1').value; $('pwMsg').style.color = '';
+  if (a.length < 8) { $('pwMsg').textContent = 'A senha precisa ter pelo menos 8 caracteres.'; return; }
+  if (a !== $('pw2').value) { $('pwMsg').textContent = 'As senhas não são iguais.'; return; }
+  const { error } = await db.auth.updateUser({ password: a });
+  if (error) { $('pwMsg').textContent = error.message; return; }
+  $('pwdDlg').close(); alert('Senha alterada com sucesso.');
+};
+$('pwMail').onclick = async () => {
+  const { error } = await db.auth.resetPasswordForEmail(me.email, { redirectTo: urlSite() });
+  $('pwMsg').style.color = error ? '' : 'var(--ok)';
+  $('pwMsg').textContent = error ? error.message : `Link enviado para ${me.email}.`;
+};
+db.auth.onAuthStateChange(ev => { if (ev === 'PASSWORD_RECOVERY') setTimeout(abrirSenha, 400); });
+
 /* ---------- navegação ---------- */
-const VIEWS = ['home', 'sale', 'history', 'products', 'services', 'clients', 'debtors', 'users', 'audit'];
+const VIEWS = ['home', 'sale', 'history', 'products', 'services', 'clients', 'debtors', 'users', 'audit', 'analysis'];
 function go(v) {
-  if (['users', 'audit'].includes(v) && !isAdmin()) v = 'home';
+  if (['users', 'audit', 'analysis'].includes(v) && !isAdmin()) v = 'home';
   VIEWS.forEach(x => $('v-' + x).classList.toggle('hidden', x !== v));
   if (v === 'home') renderHome();
   if (v === 'history') loadHistory();
   if (v === 'users') loadUsers();
   if (v === 'audit') loadAudit();
+  if (v === 'analysis') loadAnalise();
   if (v === 'clients') renderClients();
   if (v === 'debtors') renderDebtors();
   document.querySelectorAll('.nbtn').forEach(b => b.classList.toggle('on', b.dataset.go === v));
@@ -396,10 +486,15 @@ async function loadAll() {
   ]);
   const e = p.error || sv.error || c.error || d.error;
   if (e) return erro('Erro no banco de dados: ' + e.message);
-  products = p.data; services = sv.data;
+  products = p.data; services = sv.data; fillCats();
   clientsAll = c.data; clients = c.data.filter(x => x.active);
   debts = d.data.filter(x => faltaDe(x) > 0.004);
   renderProducts(); renderServices(); fillItemSelect(); fillPickers(); renderClients(); renderDebtors(); renderHome();
+}
+
+function fillCats() {
+  const cats = [...new Set([...products, ...services].map(x => x.category).filter(Boolean))].sort();
+  $('catList').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
 }
 
 /* ---------- início ---------- */
@@ -414,12 +509,13 @@ function renderHome() {
 
 /* ---------- produtos ---------- */
 function renderProducts() {
-  $('pBody').innerHTML = products.map(p => `<tr class="${p.stock <= p.min_stock ? 'low' : ''}">
-    <td>${esc(p.name)}</td><td class="num admin-only">${money(p.cost_price)}</td>
+  const q = $('pQ').value.toLowerCase();
+  $('pBody').innerHTML = products.filter(p => !q || [p.code, p.name, p.category].join(' ').toLowerCase().includes(q)).map(p => `<tr class="${p.stock <= p.min_stock ? 'low' : ''}">
+    <td>${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.category)}</td><td class="num admin-only">${money(p.cost_price)}</td>
     <td class="num">${money(p.sale_price)}</td><td class="num">${p.stock}</td>
     <td class="num">${isAdmin() ? `<input type="number" min="0" value="${p.min_stock}" style="width:70px" onchange="setMin(${p.id}, this.value)">` : p.min_stock}</td>
     <td class="num admin-only"><button class="btn ghost small" onclick="editar('products',${p.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('products',${p.id})">Arquivar</button></td></tr>`).join('')
-    || '<tr><td colspan="6" class="muted">Nenhum produto ainda.</td></tr>';
+    || '<tr><td colspan="8" class="muted">Nenhum produto ainda.</td></tr>';
 }
 async function setMin(id, v) {
   const { error } = await db.from('products').update({ min_stock: Math.max(0, parseInt(v) || 0) }).eq('id', id);
@@ -432,31 +528,33 @@ $('pCost').oninput = () => {
   $('pHint').textContent = `Preço de venda sugerido: ${money(sugerir(c))} (preço pago + ${MARKUP}%). Você pode alterar.`;
 };
 $('pMin').value = ESTOQUE_MIN_PADRAO;
+$('pQ').addEventListener('input', renderProducts);
 $('addProduct').onclick = async () => {
   const name = $('pName').value.trim();
   if (!name) return alert('Digite o nome do produto.');
   const { error } = await db.from('products').insert({
+    code: $('pCode').value.trim() || null, category: $('pCat').value.trim() || null,
     name, cost_price: +$('pCost').value || 0, sale_price: +$('pPrice').value || 0,
     stock: parseInt($('pStock').value) || 0, min_stock: parseInt($('pMin').value) || 0
   });
   if (error) return erro(error);
-  ['pName', 'pCost', 'pPrice'].forEach(i => $(i).value = ''); $('pStock').value = 0; $('pMin').value = ESTOQUE_MIN_PADRAO; $('pHint').textContent = '';
+  ['pCode', 'pCat', 'pName', 'pCost', 'pPrice'].forEach(i => $(i).value = ''); $('pStock').value = 0; $('pMin').value = ESTOQUE_MIN_PADRAO; $('pHint').textContent = '';
   loadAll();
 };
 
 /* ---------- serviços ---------- */
 function renderServices() {
   $('svBody').innerHTML = services.map(s => `<tr>
-    <td>${esc(s.name)}</td><td class="num">${money(s.price)}</td>
+    <td>${esc(s.code)}</td><td>${esc(s.name)}</td><td>${esc(s.category)}</td><td class="num">${money(s.price)}</td>
     <td class="num admin-only"><button class="btn ghost small" onclick="editar('services',${s.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('services',${s.id})">Arquivar</button></td></tr>`).join('')
-    || '<tr><td colspan="3" class="muted">Nenhum serviço ainda.</td></tr>';
+    || '<tr><td colspan="5" class="muted">Nenhum serviço ainda.</td></tr>';
 }
 $('addService').onclick = async () => {
   const name = $('svName').value.trim();
   if (!name) return alert('Digite o nome do serviço.');
-  const { error } = await db.from('services').insert({ name, price: +$('svPrice').value || 0 });
+  const { error } = await db.from('services').insert({ code: $('svCode').value.trim() || null, category: $('svCat').value.trim() || null, name, price: +$('svPrice').value || 0 });
   if (error) return erro(error);
-  $('svName').value = ''; $('svPrice').value = ''; loadAll();
+  ['svCode', 'svCat', 'svName', 'svPrice'].forEach(i => $(i).value = ''); loadAll();
 };
 async function arquivar(table, id) {
   if (!confirm('Arquivar este item? Ele sai das listas, mas as vendas antigas continuam intactas.')) return;
@@ -466,9 +564,10 @@ async function arquivar(table, id) {
 }
 
 /* ---------- nova venda ---------- */
+const casaItem = x => { const q = $('iQ').value.trim().toLowerCase(); return !q || (x.code || '').toLowerCase().includes(q) || x.name.toLowerCase().includes(q); };
 function fillItemSelect() {
   const isProd = $('iType').value === 'product';
-  $('iItem').innerHTML = (isProd ? products : services).map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  $('iItem').innerHTML = (isProd ? products : services).filter(casaItem).map(x => `<option value="${x.id}">${x.code ? esc(x.code) + ' - ' : ''}${esc(x.name)}</option>`).join('');
   $('paidWrap').classList.toggle('hidden', !isProd);
   onItemChange();
 }
@@ -486,16 +585,22 @@ function suggestPrice() {
 $('iType').onchange = fillItemSelect;
 $('iItem').onchange = onItemChange;
 $('iPaid').oninput = suggestPrice;
+$('iQ').addEventListener('input', () => {
+  const prod = $('iType').value === 'product', cur = prod ? products : services, outra = prod ? services : products;
+  if ($('iQ').value.trim() && !cur.some(casaItem) && outra.some(casaItem)) $('iType').value = prod ? 'service' : 'product';
+  fillItemSelect();
+});
+$('iQ').addEventListener('keydown', e => { if (e.key === 'Enter') $('addLine').click(); });
 
 $('addLine').onclick = () => {
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
   if (!item) return alert('Escolha um item primeiro.');
   lines.push({
-    type: $('iType').value, id: item.id, name: item.name, qty: Math.max(1, parseInt($('iQty').value) || 1),
+    type: $('iType').value, id: item.id, code: item.code || null, name: item.name, qty: Math.max(1, parseInt($('iQty').value) || 1),
     paid: isProd ? (+$('iPaid').value || 0) : null, price: +$('iPrice').value || 0
   });
-  $('iQty').value = 1; renderLines();
+  $('iQty').value = 1; $('iQ').value = ''; fillItemSelect(); renderLines(); $('iQ').focus();
 };
 function renderLines() {
   $('lines').innerHTML = lines.map((l, i) => `<tr>
@@ -525,11 +630,12 @@ async function salvarVenda(imprimir) {
   document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = true);
   const { data, error } = await db.rpc('create_sale', {
     p_customer: quick ? BALCAO_NOME : $('sCustomer').value.trim(), p_motorcycle: quick ? '' : $('sMoto').value.trim(), p_payment: $('sPay').value, p_items: lines,
-    p_client_id: !quick && $('sClient').value ? Number($('sClient').value) : null
+    p_client_id: !quick && $('sClient').value ? Number($('sClient').value) : null,
+    p_plate: quick ? null : ($('sPlate').value.trim() || null), p_km: quick ? null : (parseInt($('sKm').value) || null)
   });
   document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = false);
   if (error) { $('sMsg').textContent = error.message; return; }
-  lines = []; ['sCustomer', 'sMoto', 'sClient'].forEach(i => $(i).value = '');
+  lines = []; ['sCustomer', 'sMoto', 'sPlate', 'sKm', 'sClient'].forEach(i => $(i).value = '');
   renderLines(); loadAll();
   if (imprimir) printReceipt(data);
   $('sMsg').textContent = `Venda nº ${data.numero} salva.`; $('sMsg').style.color = 'var(--ok)';
@@ -553,13 +659,15 @@ function printReceipt(s) {
     .t{font-size:16px;font-weight:bold;text-align:right}
     @page{margin:8mm}
   </style></head><body>
-    <h1>${esc(NOTA_NOME)}</h1>
-    ${NOTA_INFO ? `<p class="c">${esc(NOTA_INFO)}</p>` : ''}
+    <div style="display:flex;align-items:center;gap:10px">
+      ${NOTA_LOGO ? `<img src="${esc(new URL(NOTA_LOGO, location.href).href)}" alt="" style="max-height:56px;max-width:110px" onerror="this.remove()">` : ''}
+      <div style="flex:1"><h1>${esc(NOTA_NOME)}</h1>${NOTA_INFO ? `<p class="c">${esc(NOTA_INFO)}</p>` : ''}</div>
+    </div>
     <p class="c">${balcao ? 'Comprovante de venda' : 'Nota de serviço e venda'} nº ${esc(s.numero ?? '')}</p>
     ${s.status === 'cancelada' ? '<p class="c"><b>*** VENDA CANCELADA ***</b></p>' : ''}<hr>
     <div>Data: ${fmtData(s.created_at)}</div>
     ${balcao ? '' : `<div>Cliente: ${esc(s.customer) || '-'}</div>
-    <div>Moto: ${esc(s.motorcycle) || '-'}</div>`}
+    <div>Moto: ${esc(s.motorcycle) || '-'}${s.plate ? ' - ' + esc(s.plate) : ''}</div>${s.km ? `<div>Km: ${esc(s.km)}</div>` : ''}`}
     <div>Pagamento: ${esc(s.payment) || '-'}${s.payment === 'Fiado' ? ' (a pagar)' : ''}</div><hr>
     <table><thead><tr><th>Item</th><th class="n">Qtd.</th><th class="n">Unit.</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table><hr>
     <div class="t">Total: ${money(s.total)}</div><hr>
@@ -570,7 +678,11 @@ function printReceipt(s) {
   f.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0';
   document.body.appendChild(f);
   f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
-  setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 60000); }, 300);
+  const imgs = [...f.contentDocument.images];
+  const prontas = Promise.all(imgs.map(im => im.complete ? 1 : new Promise(r => { im.addEventListener('load', r); im.addEventListener('error', r); })));
+  Promise.race([prontas, new Promise(r => setTimeout(r, 2500))]).then(() => setTimeout(() => {
+    f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 60000);
+  }, 150));
 }
 
 /* ---------- registro de vendas ---------- */
@@ -584,7 +696,7 @@ function renderHistory() {
   const q = $('hQ').value.toLowerCase(), a = $('hFrom').value, b = $('hTo').value, st = $('hSt').value, ty = $('hType').value;
   const rows = salesCache.filter(s => {
     const d = new Date(s.created_at).toLocaleDateString('sv-SE');
-    const txt = [s.numero, s.customer, s.motorcycle, s.items.map(i => i.name).join(' ')].join(' ').toLowerCase();
+    const txt = [s.numero, s.customer, s.motorcycle, s.plate, s.items.map(i => i.name).join(' ')].join(' ').toLowerCase();
     return (!q || txt.includes(q)) && (!a || d >= a) && (!b || d <= b) && (!st || s.status === st) && (!ty || (ty === 'balcao') === (s.customer === BALCAO_NOME));
   });
   const ativas = rows.filter(s => s.status === 'ativa');
@@ -593,7 +705,7 @@ function renderHistory() {
   $('hSummary').textContent = `${ativas.length} vendas ativas, ${money(total)} faturado` + (isAdmin() ? `, lucro estimado ${money(lucro)}` : '') + '.';
   $('hBody').innerHTML = rows.map(s => `<tr class="${s.status === 'cancelada' ? 'canceled' : ''}">
     <td>${s.numero}</td><td>${fmtData(s.created_at)}</td><td>${esc(s.customer)}</td>
-    <td>${esc(s.motorcycle)}</td><td>${esc(s.payment)}${s.payment === 'Fiado' && s.total - s.paid > 0.004 ? ` (falta ${money(s.total - s.paid)})` : ''}</td>
+    <td>${esc(s.motorcycle)}${s.plate ? ' · ' + esc(s.plate) : ''}${s.km ? ' · ' + s.km + ' km' : ''}</td><td>${esc(s.payment)}${s.payment === 'Fiado' && s.total - s.paid > 0.004 ? ` (falta ${money(s.total - s.paid)})` : ''}</td>
     <td>${s.items.map(i => `${esc(i.name)} x${i.qty}`).join(', ')}</td>
     <td class="num">${money(s.total)}</td>
     <td class="num"><button class="btn ghost small" onclick="printReceipt(salesCache.find(x => x.id === ${s.id}))">Imprimir</button>
@@ -618,15 +730,16 @@ function pickerHTML(p) {
   <div class="row hidden" id="${p}NewBox" style="margin-top:10px">
     <label style="flex:2">Nome <input id="${p}NName"></label>
     <label>Telefone <input id="${p}NPhone"></label>
-    <label>Moto / placa <input id="${p}NMoto"></label>
+    <label>Moto (modelo) <input id="${p}NMoto"></label>
+    <label>Placa <input id="${p}NPlate"></label>
     <button type="button" class="btn" id="${p}NSave">Salvar cliente</button>
   </div>`;
 }
 function fillPicker(p, keep) {
   const sel = $(p + 'Client'), q = $(p + 'Q').value.toLowerCase(), cur = keep ?? sel.value;
-  const lista = clients.filter(c => !q || [c.name, c.phone, c.motorcycle].join(' ').toLowerCase().includes(q));
+  const lista = clients.filter(c => !q || [c.name, c.phone, c.motorcycle, c.plate].join(' ').toLowerCase().includes(q));
   sel.innerHTML = `<option value="">${p === 's' ? 'Cliente avulso' : 'Escolha o cliente'}</option>` +
-    lista.map(c => `<option value="${c.id}">${esc(c.name)}${c.phone ? ' - ' + esc(c.phone) : ''}</option>`).join('');
+    lista.map(c => `<option value="${c.id}">${esc(c.name)}${c.phone ? ' - ' + esc(c.phone) : ''}${c.plate ? ' [' + esc(c.plate) + ']' : ''}</option>`).join('');
   sel.value = cur;
 }
 const fillPickers = () => { fillPicker('s'); fillPicker('d'); };
@@ -637,29 +750,32 @@ function setupPicker(p, aoEscolher) {
   $(p + 'NSave').onclick = async () => {
     const name = $(p + 'NName').value.trim();
     if (!name) return alert('Digite o nome do cliente.');
-    const { data, error } = await db.from('clients').insert({ name, phone: $(p + 'NPhone').value.trim(), motorcycle: $(p + 'NMoto').value.trim() }).select().single();
+    const { data, error } = await db.from('clients').insert({ name, phone: $(p + 'NPhone').value.trim(), motorcycle: $(p + 'NMoto').value.trim(), plate: $(p + 'NPlate').value.trim().toUpperCase() || null }).select().single();
     if (error) return erro(error);
-    ['NName', 'NPhone', 'NMoto'].forEach(i => $(p + i).value = '');
+    ['NName', 'NPhone', 'NMoto', 'NPlate'].forEach(i => $(p + i).value = '');
     $(p + 'NewBox').classList.add('hidden'); $(p + 'Q').value = '';
     await loadAll(); fillPicker(p, String(data.id)); aoEscolher && aoEscolher(data);
   };
 }
 function renderClients() {
   const q = $('cQ').value.toLowerCase();
-  $('cBody').innerHTML = clients.filter(c => !q || [c.name, c.phone, c.motorcycle].join(' ').toLowerCase().includes(q)).map(c => {
+  $('cBody').innerHTML = clients.filter(c => !q || [c.name, c.phone, c.motorcycle, c.plate].join(' ').toLowerCase().includes(q)).map(c => {
     const deve = debts.filter(d => d.client_id === c.id).reduce((t, d) => t + faltaDe(d), 0);
-    return `<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.motorcycle)}</td>
+    return `<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.motorcycle)}</td><td>${esc(c.plate)}</td>
       <td class="num">${deve > 0.004 ? `<b>${money(deve)}</b>` : '-'}</td>
       <td class="num"><button class="btn ghost small" onclick="editar('clients',${c.id})">Editar</button> <button class="btn ghost small" onclick="arquivar('clients',${c.id})">Arquivar</button></td></tr>`;
-  }).join('') || '<tr><td colspan="5" class="muted">Nenhum cliente encontrado.</td></tr>';
+  }).join('') || '<tr><td colspan="6" class="muted">Nenhum cliente encontrado.</td></tr>';
 }
 $('cQ').addEventListener('input', renderClients);
 $('addClient').onclick = async () => {
   const name = $('cName').value.trim();
   if (!name) return alert('Digite o nome do cliente.');
-  const { error } = await db.from('clients').insert({ name, phone: $('cPhone').value.trim(), motorcycle: $('cMoto').value.trim() });
+  const { error } = await db.from('clients').insert({
+    name, phone: $('cPhone').value.trim(), motorcycle: $('cMoto').value.trim(), plate: $('cPlate').value.trim().toUpperCase() || null,
+    address: $('cAddr').value.trim() || null, gender: $('cGender').value || null, age_range: $('cAge').value || null
+  });
   if (error) return erro(error);
-  ['cName', 'cPhone', 'cMoto'].forEach(i => $(i).value = ''); loadAll();
+  ['cName', 'cPhone', 'cMoto', 'cPlate', 'cAddr', 'cGender', 'cAge'].forEach(i => $(i).value = ''); $('cOpt').open = false; loadAll();
 };
 function renderDebtors() {
   const falta = debts.reduce((t, d) => t + faltaDe(d), 0);
@@ -696,22 +812,25 @@ $('addDebt').onclick = async () => {
 /* ---------- editar cadastros ---------- */
 function abrirDlg(titulo, campos, item, salvar) {
   $('dlgTitle').textContent = titulo;
-  $('dlgFields').innerHTML = campos.map(([k, rot, tipo]) => `<label>${rot}<input data-k="${k}" type="${tipo === 'text' ? 'text' : 'number'}"
-    ${tipo === 'text' ? '' : `min="0" step="${tipo === 'int' ? 1 : 0.01}"`} value="${esc(item[k] ?? '')}"></label>`).join('');
+  $('dlgFields').innerHTML = campos.map(([k, rot, tipo]) => Array.isArray(tipo)
+    ? `<label>${rot}<select data-k="${k}">${tipo.map(o => `<option value="${esc(o)}" ${item[k] === o ? 'selected' : ''}>${o || 'Não informar'}</option>`).join('')}</select></label>`
+    : `<label>${rot}<input data-k="${k}" type="${tipo === 'text' ? 'text' : 'number'}" ${tipo === 'text' ? '' : `min="0" step="${tipo === 'int' ? 1 : 0.01}"`} value="${esc(item[k] ?? '')}"></label>`).join('');
   $('dlgSave').onclick = async () => {
     const v = {};
-    $('dlgFields').querySelectorAll('input').forEach(i => {
+    $('dlgFields').querySelectorAll('input,select').forEach(i => {
       const t = campos.find(c => c[0] === i.dataset.k)[2];
-      v[i.dataset.k] = t === 'text' ? i.value.trim() : t === 'int' ? Math.round(Number(i.value)) : Number(i.value);
+      v[i.dataset.k] = Array.isArray(t) ? (i.value || null) : t === 'text' ? (i.value.trim() || null) : t === 'int' ? Math.round(Number(i.value)) : Number(i.value);
     });
     if (await salvar(v) !== false) { $('dlg').close(); loadAll(); }
   };
   $('dlg').showModal();
 }
+const GENEROS = ['', 'Homem', 'Mulher', 'Outro'];
+const FAIXAS = ['', 'Menos de 20', '20 a 29', '30 a 39', '40 a 49', '50 a 59', '60 a 69', '70 ou mais'];
 const EDITAVEL = {
-  products: ['Editar produto', () => products, [['name', 'Nome', 'text'], ['cost_price', 'Preço pago (custo)', 'num'], ['sale_price', 'Preço de venda', 'num'], ['stock', 'Estoque', 'int'], ['min_stock', 'Estoque mínimo', 'int']]],
-  services: ['Editar serviço', () => services, [['name', 'Nome do serviço', 'text'], ['price', 'Preço', 'num']]],
-  clients:  ['Editar cliente', () => clients, [['name', 'Nome', 'text'], ['phone', 'Telefone', 'text'], ['motorcycle', 'Moto / placa', 'text']]]
+  products: ['Editar produto', () => products, [['code', 'Código', 'text'], ['name', 'Nome', 'text'], ['category', 'Categoria', 'text'], ['cost_price', 'Preço pago (custo)', 'num'], ['sale_price', 'Preço de venda', 'num'], ['stock', 'Estoque', 'int'], ['min_stock', 'Estoque mínimo', 'int']]],
+  services: ['Editar serviço', () => services, [['code', 'Código', 'text'], ['name', 'Nome do serviço', 'text'], ['category', 'Categoria', 'text'], ['price', 'Preço', 'num']]],
+  clients:  ['Editar cliente', () => clients, [['name', 'Nome', 'text'], ['phone', 'Telefone', 'text'], ['motorcycle', 'Moto (modelo)', 'text'], ['plate', 'Placa', 'text'], ['address', 'Endereço', 'text'], ['gender', 'Sexo', GENEROS], ['age_range', 'Faixa etária', FAIXAS]]]
 };
 function editar(tabela, id) {
   const [titulo, lista, campos] = EDITAVEL[tabela];
@@ -728,6 +847,98 @@ function editarDivida(id) {
     const { error } = await db.rpc('edit_debt', { p_sale: id, p_total: v.total, p_description: v.description });
     if (error) { erro(error); return false; }
   });
+}
+
+/* ---------- análises ---------- */
+const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const GRAFICOS = {
+  tempo: 'Faturamento no período', top: 'Mais vendidos (quantidade)', categoria: 'Faturamento por categoria', lucro: 'Lucro por categoria',
+  pagamento: 'Formas de pagamento', tipo: 'Oficina x balcão', faixa: 'Clientes por faixa etária', sexo: 'Clientes por sexo'
+};
+const PAL = ['#d9480f', '#1b2430', '#2b8a3e', '#1c7ed6', '#f08c00', '#7048e8', '#c2255c', '#0c8599', '#66717f', '#a9e34b'];
+let vendasAn = [], prodAn = [], servAn = [], charts = {}, graficosOn = ['tempo', 'top', 'categoria', 'pagamento'];
+try { graficosOn = JSON.parse(localStorage.getItem('graficos')) || graficosOn; } catch {}
+const catDe = i => (i.type === 'product' ? prodAn : servAn).find(x => x.id === i.id)?.category || (i.type === 'product' ? 'Sem categoria' : 'Serviços');
+
+function preencher(id, ops, atual) {
+  const el = $(id);
+  el.innerHTML = ops.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
+  el.value = atual ?? ''; if (el.selectedIndex < 0) el.selectedIndex = 0;
+}
+async function loadAnalise() {
+  try { vendasAn = await todas('sales'); prodAn = await todas('products'); servAn = await todas('services'); } catch (e) { return erro(e); }
+  const anos = [...new Set(vendasAn.map(s => new Date(s.created_at).getFullYear()))].sort((a, b) => b - a);
+  preencher('anAno', [['', 'Todos'], ...anos.map(a => [String(a), String(a)])], $('anAno').options.length ? $('anAno').value : String(new Date().getFullYear()));
+  preencher('anMes', [['', 'Todos'], ...MESES.map((m, i) => [String(i + 1), m])], $('anMes').value);
+  const cats = [...new Set([...prodAn.map(p => p.category || 'Sem categoria'), ...servAn.map(x => x.category || 'Serviços')])].sort();
+  preencher('anCat', [['', 'Todas'], ...cats.map(c => [c, c])], $('anCat').value);
+  const nomes = [...new Set([...prodAn, ...servAn].map(x => x.name))].sort();
+  preencher('anItem', [['', 'Todos'], ...nomes.map(n => [n, n])], $('anItem').value);
+  $('anChips').innerHTML = '<span class="muted">Gráficos:</span>' + Object.entries(GRAFICOS).map(([k, t]) =>
+    `<label class="chip"><input type="checkbox" data-g="${k}" ${graficosOn.includes(k) ? 'checked' : ''}> ${t}</label>`).join('');
+  renderAnalise();
+}
+$('anChips').addEventListener('change', () => {
+  graficosOn = [...$('anChips').querySelectorAll('input:checked')].map(i => i.dataset.g);
+  try { localStorage.setItem('graficos', JSON.stringify(graficosOn)); } catch {}
+  renderAnalise();
+});
+['anAno', 'anMes', 'anCat', 'anItem', 'anTipo'].forEach(id => $(id).addEventListener('change', renderAnalise));
+
+function renderAnalise() {
+  const f = { ano: $('anAno').value, mes: $('anMes').value, cat: $('anCat').value, item: $('anItem').value, tipo: $('anTipo').value };
+  const vendas = vendasAn.filter(s => {
+    if (s.status !== 'ativa') return false;
+    const d = new Date(s.created_at);
+    return (!f.ano || d.getFullYear() == f.ano) && (!f.mes || d.getMonth() + 1 == f.mes) && (!f.tipo || (f.tipo === 'balcao') === (s.customer === BALCAO_NOME));
+  });
+  const L = [];
+  vendas.forEach(s => s.items.forEach(i => {
+    const cat = catDe(i);
+    if ((!f.cat || cat === f.cat) && (!f.item || i.name === f.item))
+      L.push({ s, i, cat, rec: i.price * i.qty, luc: (i.price - (i.paid || 0)) * i.qty, d: new Date(s.created_at) });
+  }));
+  const fat = L.reduce((t, l) => t + l.rec, 0), luc = L.reduce((t, l) => t + l.luc, 0), n = new Set(L.map(l => l.s.id)).size;
+  $('anKpis').innerHTML = [['Faturamento', money(fat)], ['Lucro estimado', money(luc)], ['Vendas', n], ['Ticket médio', money(n ? fat / n : 0)]]
+    .map(([t, v]) => `<div class="kpi"><span>${t}</span><b>${v}</b></div>`).join('');
+
+  Object.values(charts).forEach(c => c.destroy()); charts = {};
+  $('anCharts').innerHTML = graficosOn.filter(g => GRAFICOS[g]).map(g =>
+    `<div class="card" style="margin:0"><h2>${GRAFICOS[g]}</h2><div style="position:relative;height:280px"><canvas id="ch_${g}"></canvas></div></div>`).join('')
+    || '<p class="muted">Marque ao menos um gráfico acima.</p>';
+
+  const soma = (arr, chave, val) => { const m = {}; arr.forEach(x => { const k = chave(x); m[k] = (m[k] || 0) + val(x); }); return m; };
+  const top = (m, max = 10) => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, max);
+  const desenhar = (g, tipo, pares, rotulo, horiz) => {
+    if (!$('ch_' + g)) return;
+    const pizza = tipo === 'doughnut';
+    charts[g] = new Chart($('ch_' + g), {
+      type: tipo,
+      data: { labels: pares.map(p => p[0]), datasets: [{ label: rotulo, data: pares.map(p => Math.round(p[1] * 100) / 100), backgroundColor: pizza ? PAL : '#d9480f' }] },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: horiz ? 'y' : 'x',
+        plugins: { legend: { display: pizza, position: 'bottom' } }, scales: pizza ? {} : { [horiz ? 'x' : 'y']: { beginAtZero: true } } }
+    });
+  };
+  if (f.mes) {
+    const dias = new Date(f.ano || new Date().getFullYear(), f.mes, 0).getDate(), m = soma(L, l => l.d.getDate(), l => l.rec);
+    desenhar('tempo', 'bar', Array.from({ length: dias }, (_, k) => [String(k + 1), m[k + 1] || 0]), 'R$');
+  } else if (f.ano) {
+    const m = soma(L, l => l.d.getMonth(), l => l.rec);
+    desenhar('tempo', 'bar', MESES.map((nome, k) => [nome, m[k] || 0]), 'R$');
+  } else {
+    const m = soma(L, l => `${l.d.getFullYear()}-${String(l.d.getMonth() + 1).padStart(2, '0')}`, l => l.rec);
+    desenhar('tempo', 'bar', Object.entries(m).sort(), 'R$');
+  }
+  desenhar('top', 'bar', top(soma(L, l => l.i.name, l => l.i.qty)), 'Quantidade', true);
+  desenhar('categoria', 'doughnut', top(soma(L, l => l.cat, l => l.rec), 8), 'R$');
+  desenhar('lucro', 'bar', top(soma(L, l => l.cat, l => l.luc), 8), 'R$');
+  desenhar('pagamento', 'doughnut', Object.entries(soma(L, l => l.s.payment || 'Sem forma', l => l.rec)), 'R$');
+  desenhar('tipo', 'doughnut', Object.entries(soma(L, l => l.s.customer === BALCAO_NOME ? 'Balcão' : 'Oficina', l => l.rec)), 'R$');
+  const cs = [...new Set(L.map(l => l.s.client_id).filter(Boolean))].map(id => clientsAll.find(c => c.id === id)).filter(Boolean);
+  const contar = chave => { const m = {}; cs.forEach(c => { const k = chave(c) || 'Não informado'; m[k] = (m[k] || 0) + 1; }); return m; };
+  const mf = contar(c => c.age_range);
+  desenhar('faixa', 'bar', [...FAIXAS.slice(1), 'Não informado'].map(k => [k, mf[k] || 0]), 'Clientes');
+  desenhar('sexo', 'doughnut', Object.entries(contar(c => c.gender)), 'Clientes');
 }
 
 /* ---------- usuários ---------- */
