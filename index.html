@@ -417,6 +417,13 @@
     <div id="v-analysis" class="hidden">
       <div style="margin-bottom:12px"><button class="btn ghost small" data-go="home">← Voltar ao início</button></div>
       <div class="card">
+        <div class="seg">
+          <button class="btn ghost on" id="anModoV">Vendas e gráficos</button>
+          <button class="btn ghost" id="anModoE">Estoque e projeções</button>
+        </div>
+      </div>
+      <div id="anVendas">
+      <div class="card">
         <h2>Análises</h2>
         <div class="row">
           <label>Ano <select id="anAno"></select></label>
@@ -429,6 +436,38 @@
       </div>
       <div class="kpis" id="anKpis"></div>
       <div class="charts" id="anCharts"></div>
+      </div>
+
+      <div id="anEstoque" class="hidden">
+        <div class="card">
+          <h2>Estoque e projeções</h2>
+          <div class="row">
+            <label style="max-width:260px">Base das vendas
+              <select id="esPer"><option value="30">Últimos 30 dias</option><option value="60">Últimos 60 dias</option><option value="90" selected>Últimos 90 dias</option><option value="180">Últimos 180 dias</option><option value="365">Último ano</option><option value="0">Desde a primeira venda</option></select>
+            </label>
+          </div>
+          <p class="help" style="margin:10px 0 0">Projeção simples: repete o ritmo de vendas do período escolhido no próximo período do mesmo tamanho, limitada ao estoque que existe hoje. Não considera sazonalidade, promoções nem novas compras. Vale para produtos (serviços não têm estoque).</p>
+        </div>
+        <div class="kpis" id="esKpis"></div>
+        <div class="charts">
+          <div class="card" style="margin:0"><h2>Comparativo</h2><div style="position:relative;height:280px"><canvas id="ch_est"></canvas></div></div>
+          <div class="card" style="margin:0" id="esCenarios"></div>
+        </div>
+        <div class="charts" id="esListas" style="margin-top:20px"></div>
+        <div class="card" style="margin-top:20px">
+          <h2>Produto a produto</h2>
+          <div class="muted">Curva ABC: A = produtos que somam 80% do faturamento, B = próximos 15%, C = últimos 5%. "Cobertura" = quantos dias o estoque dura no ritmo do período. "Repor" = vai acabar antes do fim do próximo período. "Parado" = tem estoque e não vendeu nada no período.</div>
+          <div class="overflow"><table>
+            <thead><tr>
+              <th data-t="est" data-k="code">Código</th><th data-t="est" data-k="name">Produto</th>
+              <th class="num" data-t="est" data-k="stock">Estoque</th><th class="num" data-t="est" data-k="cost">Custo médio</th><th class="num" data-t="est" data-k="price">Preço</th>
+              <th class="num" data-t="est" data-k="margem">Margem</th><th class="num" data-t="est" data-k="q">Vendido (un.)</th>
+              <th class="num" data-t="est" data-k="rec">Faturamento</th><th class="num" data-t="est" data-k="luc">Lucro</th>
+              <th class="num" data-t="est" data-k="cob">Cobertura</th><th data-t="est" data-k="abc">ABC</th><th data-t="est" data-k="sit">Situação</th></tr></thead>
+            <tbody id="esBody"></tbody>
+          </table></div>
+        </div>
+      </div>
     </div>
 
     <!-- USUÁRIOS -->
@@ -1217,6 +1256,7 @@ async function loadAnalise() {
   $('anChips').innerHTML = '<span class="muted">Gráficos:</span>' + Object.entries(GRAFICOS).map(([k, t]) =>
     `<label class="chip"><input type="checkbox" data-g="${k}" ${graficosOn.includes(k) ? 'checked' : ''}> ${t}</label>`).join('');
   renderAnalise();
+  if (!$('anEstoque').classList.contains('hidden')) renderEstoque();
 }
 $('anChips').addEventListener('change', () => {
   graficosOn = [...$('anChips').querySelectorAll('input:checked')].map(i => i.dataset.g);
@@ -1278,6 +1318,79 @@ function renderAnalise() {
   desenhar('faixa', 'bar', [...FAIXAS.slice(1), 'Não informado'].map(k => [k, mf[k] || 0]), 'Clientes');
   desenhar('sexo', 'doughnut', Object.entries(contar(c => c.gender)), 'Clientes');
 }
+
+/* ---------- estoque e projeções ---------- */
+const pct = n => n.toFixed(1).replace('.', ',') + '%';
+let estLinhas = [], chEst = null;
+function setModoAn(est) {
+  $('anVendas').classList.toggle('hidden', est); $('anEstoque').classList.toggle('hidden', !est);
+  $('anModoV').classList.toggle('on', !est); $('anModoE').classList.toggle('on', est);
+  if (est) renderEstoque();
+}
+$('anModoV').onclick = () => setModoAn(false);
+$('anModoE').onclick = () => setModoAn(true);
+$('esPer').addEventListener('change', renderEstoque);
+
+function renderEstoque() {
+  const DIA = 864e5, agora = Date.now(), ativas = vendasAn.filter(s => s.status === 'ativa');
+  let dias = parseInt($('esPer').value);
+  if (!dias) { const ini = Math.min(...ativas.map(s => +new Date(s.created_at))); dias = Number.isFinite(ini) ? Math.max(1, Math.ceil((agora - ini) / DIA)) : 1; }
+  const corte = agora - dias * DIA, vend = {};
+  ativas.filter(s => +new Date(s.created_at) >= corte).forEach(s => s.items.forEach(i => {
+    if (i.type !== 'product') return;
+    const p = prodAn.find(x => x.id === i.id), v = vend[i.id] = vend[i.id] || { q: 0, rec: 0, luc: 0 };
+    v.q += i.qty; v.rec += i.price * i.qty; v.luc += (i.price - (i.paid ?? (p ? p.cost_price : 0))) * i.qty;
+  }));
+  const L = prodAn.filter(p => p.active || vend[p.id]).map(p => {
+    const v = vend[p.id] || { q: 0, rec: 0, luc: 0 }, stock = p.active ? p.stock : 0, cob = v.q > 0 ? stock / (v.q / dias) : null, pq = Math.min(v.q, stock);
+    return { code: p.code, name: p.name, stock, cost: p.cost_price, price: p.sale_price, margem: p.sale_price > 0 ? (p.sale_price - p.cost_price) / p.sale_price * 100 : 0,
+      q: v.q, rec: v.rec, luc: v.luc, cob, pq, prec: pq * p.sale_price, pluc: pq * (p.sale_price - p.cost_price), pot: stock * p.sale_price, custo: stock * p.cost_price,
+      sit: v.q === 0 ? (stock > 0 ? 'Parado' : '-') : (cob < dias ? 'Repor' : 'Ok'), abc: '-' };
+  });
+  const sum = (arr, f) => arr.reduce((t, x) => t + f(x), 0), totRec = sum(L, l => l.rec);
+  let acum = 0;
+  [...L].filter(l => l.rec > 0).sort((a, b) => b.rec - a.rec).forEach(l => { l.abc = acum < 0.8 * totRec ? 'A' : acum < 0.95 * totRec ? 'B' : 'C'; acum += l.rec; });
+  estLinhas = L;
+
+  const un = sum(L, l => l.stock), custo = sum(L, l => l.custo), pot = sum(L, l => l.pot), lucPot = pot - custo;
+  const recPer = totRec, lucPer = sum(L, l => l.luc), pRec = sum(L, l => l.prec), pLuc = sum(L, l => l.pluc);
+  const sobra = sum(L, l => (l.stock - l.pq) * l.cost), parado = sum(L.filter(l => l.sit === 'Parado'), l => l.custo), repor = L.filter(l => l.sit === 'Repor').length;
+  const diasTudo = recPer > 0 ? pot / (recPer / dias) : null;
+  $('esKpis').innerHTML = [['Unidades em estoque', un.toLocaleString('pt-BR')], ['Estoque a preço de compra', money(custo)], ['Estoque a preço de venda', money(pot)],
+    ['Lucro se vender tudo', `${money(lucPot)} (${pct(pot > 0 ? lucPot / pot * 100 : 0)})`], ['Produtos para repor', repor], ['Parado (sem vendas no período)', money(parado)]]
+    .map(([t, v]) => `<div class="kpi"><span>${t}</span><b style="font-size:24px">${v}</b></div>`).join('');
+  $('esCenarios').innerHTML = `<h2>Cenários</h2>
+    <p style="margin-top:0"><b>1. Vender todo o estoque pelo preço anunciado</b><br>Faturamento ${money(pot)} · Custo ${money(custo)} · <b>Lucro ${money(lucPot)}</b></p>
+    <p><b>2. Repetir as vendas dos últimos ${dias} dias nos próximos ${dias} dias</b><br>Faturamento projetado ${money(pRec)} · <b>Lucro projetado ${money(pLuc)}</b><br>
+      <span class="muted">Período anterior (real): ${money(recPer)} de faturamento e ${money(lucPer)} de lucro. Sobrariam em estoque ${money(sobra)} ao preço de compra.</span></p>
+    <p style="margin-bottom:0"><b>Ritmo:</b> ${diasTudo === null ? 'sem vendas no período para calcular.' : `no ritmo atual, vender todo o estoque levaria cerca de ${Math.round(diasTudo)} dias (${(diasTudo / 30).toFixed(1).replace('.', ',')} meses).`}</p>`;
+  if (chEst) chEst.destroy();
+  const r2 = n => Math.round(n * 100) / 100;
+  chEst = new Chart($('ch_est'), { type: 'bar',
+    data: { labels: ['Período anterior (real)', 'Próximo período (projeção)', 'Vender todo o estoque'],
+      datasets: [{ label: 'Faturamento', data: [r2(recPer), r2(pRec), r2(pot)], backgroundColor: '#d9480f' }, { label: 'Lucro', data: [r2(lucPer), r2(pLuc), r2(lucPot)], backgroundColor: '#2b8a3e' }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } } });
+
+  const com = L.filter(l => l.rec > 0);
+  const card = (t, arr, fmt) => `<div class="card" style="margin:0"><h2>${t}</h2>${arr.length
+    ? `<ol style="margin:0;padding-left:22px">${arr.slice(0, 10).map(l => `<li>${esc(l.name)} <span class="muted">${fmt(l)}</span></li>`).join('')}</ol>`
+    : '<p class="muted" style="margin:0">Sem dados no período.</p>'}</div>`;
+  const fFat = l => `${money(l.rec)} · ${l.q} un.`, fLuc = l => `${money(l.luc)} · ${l.q} un.`;
+  $('esListas').innerHTML = card('Mais geram faturamento', [...com].sort((a, b) => b.rec - a.rec), fFat)
+    + card('Menos geram faturamento', [...com].sort((a, b) => a.rec - b.rec), fFat)
+    + card('Mais geram lucro', [...com].sort((a, b) => b.luc - a.luc), fLuc)
+    + card('Menos geram lucro', [...com].sort((a, b) => a.luc - b.luc), fLuc)
+    + card('Estoque parado (sem vendas no período)', L.filter(l => l.sit === 'Parado').sort((a, b) => b.custo - a.custo), l => `${money(l.custo)} parados · ${l.stock} un.`);
+  renderEstTabela();
+}
+function renderEstTabela() {
+  $('esBody').innerHTML = ordenar('est', estLinhas, { cob: l => l.cob ?? 1e12 }).map(l => `<tr class="${l.sit === 'Repor' ? 'low' : ''}">
+    <td>${esc(l.code)}</td><td>${esc(l.name)}</td><td class="num">${l.stock}</td><td class="num">${money(l.cost)}</td><td class="num">${money(l.price)}</td>
+    <td class="num">${pct(l.margem)}</td><td class="num">${l.q}</td><td class="num">${money(l.rec)}</td><td class="num">${money(l.luc)}</td>
+    <td class="num">${l.cob === null ? '—' : Math.round(l.cob) + ' d'}</td><td>${l.abc}</td><td>${l.sit}</td></tr>`).join('')
+    || '<tr><td colspan="12" class="muted">Nenhum produto.</td></tr>';
+}
+RENDER.est = renderEstTabela;
 
 /* ---------- usuários ---------- */
 async function loadUsers() {
