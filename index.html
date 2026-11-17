@@ -99,6 +99,16 @@
   .sale-adjust{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
   .discount-message{margin-top:6px;padding:6px 9px;border-left:3px solid #d4a017;background:#fff8db;color:#765400;font-size:12px;border-radius:3px}
   .discount-message.error{border-left-color:#c92a2a;background:#fff0f0;color:#a61e1e}
+
+  /* dropdowns pesquisáveis */
+  .search-select{position:relative;width:100%;min-width:0}
+  .search-select-input{width:100%;min-width:0;background:#fff;padding-right:34px;cursor:text}
+  .search-select::after{content:'▾';position:absolute;right:12px;top:8px;color:var(--muted);pointer-events:none}
+  .search-select-menu{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 3px);max-height:260px;overflow:auto;background:#fff;border:1px solid var(--ink);border-radius:4px;box-shadow:0 8px 20px rgba(27,36,48,.18)}
+  .search-select-option{display:block;width:100%;padding:9px 11px;border:0;border-radius:0;background:#fff;color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+  .search-select-option:hover,.search-select-option[aria-selected="true"]{background:var(--warn)}
+  .search-select-empty{padding:10px 12px;color:var(--muted);font-size:13px}
+  select.search-select-native{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 </style>
 </head>
 <body>
@@ -1760,6 +1770,90 @@ async function baixarBase() {
     XLSX.writeFile(wb, `backup-zecamotos-${dia}.xlsx`);
   } catch (e) { erro(e); }
 }
+
+
+/* ---------- dropdowns com pesquisa integrada ---------- */
+function enhanceSearchableSelect(sel) {
+  if (!(sel instanceof HTMLSelectElement) || sel.dataset.searchEnhanced === '1') return;
+  // Dropdowns desabilitados permanecem nativos, preservando seu estado visual.
+  if (sel.disabled) return;
+  sel.dataset.searchEnhanced = '1';
+  sel.classList.add('search-select-native');
+  const wrap = document.createElement('div');
+  wrap.className = 'search-select';
+  const input = document.createElement('input');
+  input.type = 'text'; input.className = 'search-select-input';
+  input.placeholder = 'Clique e digite para pesquisar...';
+  input.setAttribute('autocomplete', 'off');
+  input.setAttribute('aria-label', 'Pesquisar opções');
+  const menu = document.createElement('div');
+  menu.className = 'search-select-menu hidden';
+  menu.setAttribute('role', 'listbox');
+  wrap.append(input, menu);
+  sel.insertAdjacentElement('afterend', wrap);
+
+  let opened = false;
+  const options = () => Array.from(sel.options).map((o, index) => ({
+    value:o.value, label:o.textContent.trim(), disabled:o.disabled, index,
+    selected:o.selected
+  }));
+  function syncLabel() {
+    const chosen = sel.selectedOptions[0];
+    input.value = chosen ? chosen.textContent.trim() : '';
+  }
+  function draw() {
+    const q = input.value.trim().toLocaleLowerCase('pt-BR');
+    const matches = options().filter(o => !q || o.label.toLocaleLowerCase('pt-BR').includes(q));
+    menu.innerHTML = '';
+    if (!matches.length) {
+      const empty = document.createElement('div'); empty.className='search-select-empty';
+      empty.textContent='Nenhuma opção encontrada.'; menu.append(empty); return;
+    }
+    matches.forEach(o => {
+      const b = document.createElement('button');
+      b.type='button'; b.className='search-select-option'; b.textContent=o.label;
+      b.disabled=o.disabled; b.setAttribute('role','option');
+      b.setAttribute('aria-selected', o.selected ? 'true' : 'false');
+      b.addEventListener('mousedown', e => e.preventDefault());
+      b.addEventListener('click', () => {
+        sel.selectedIndex=o.index;
+        sel.dispatchEvent(new Event('change', {bubbles:true}));
+        syncLabel(); close();
+      });
+      menu.append(b);
+    });
+  }
+  function open() {
+    if (sel.disabled) return;
+    opened=true; input.value=''; menu.classList.remove('hidden'); draw();
+  }
+  function close() { opened=false; menu.classList.add('hidden'); syncLabel(); }
+  input.addEventListener('focus', open);
+  input.addEventListener('click', () => { if (!opened) open(); });
+  input.addEventListener('input', draw);
+  input.addEventListener('keydown', e => {
+    if (e.key==='Escape') { e.preventDefault(); close(); input.blur(); }
+    if (e.key==='ArrowDown') { e.preventDefault(); menu.querySelector('.search-select-option:not(:disabled)')?.focus(); }
+    if (e.key==='Enter') { e.preventDefault(); menu.querySelector('.search-select-option:not(:disabled)')?.click(); }
+  });
+  menu.addEventListener('keydown', e => {
+    if (e.key==='Escape') { e.preventDefault(); close(); input.focus(); }
+  });
+  document.addEventListener('mousedown', e => { if (opened && !wrap.contains(e.target)) close(); });
+  sel.addEventListener('change', () => { if (!opened) syncLabel(); else draw(); });
+  // Opções podem ser reconstruídas pelo sistema ao trocar filtros ou carregar dados.
+  new MutationObserver(() => { if (opened) draw(); else syncLabel(); })
+    .observe(sel, {childList:true, subtree:true, characterData:true, attributes:true});
+  syncLabel();
+}
+function enhanceAllSearchableSelects(root=document) {
+  if (root.matches?.('select')) enhanceSearchableSelect(root);
+  root.querySelectorAll?.('select').forEach(enhanceSearchableSelect);
+}
+enhanceAllSearchableSelects();
+new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
+  if (node.nodeType===1) enhanceAllSearchableSelects(node);
+}))).observe(document.body, {childList:true,subtree:true});
 
 renderLines();
 marcarSetas();
