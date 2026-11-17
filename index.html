@@ -96,6 +96,11 @@
   .ag.cancelado{opacity:.55}
   .ag .acts{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
   .tag{font-size:11px;background:var(--bg);border-radius:999px;padding:1px 8px;color:var(--muted)}
+  .sale-adjust{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
+  .sale-preview{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px}
+  .sale-preview>div{background:#f6f7f8;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+  .sale-preview span{display:block;color:var(--muted);font-size:12px}
+  .sale-preview b{display:block;font:700 21px 'Barlow Condensed',sans-serif}
 </style>
 </head>
 <body>
@@ -193,10 +198,31 @@
       <div class="card">
         <h2>Itens desta venda</h2>
         <div class="overflow"><table>
-          <thead><tr><th>Item</th><th class="num">Qtd.</th><th class="num">Preço unit.</th><th class="num">Subtotal</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th class="num">Qtd.</th><th class="num">Preço tabela</th><th class="num">Preço ajustado</th><th class="num">Subtotal</th><th></th></tr></thead>
           <tbody id="lines"></tbody>
         </table></div>
         <div class="total" id="saleTotal">R$ 0,00</div>
+        <div class="sale-adjust admin-only">
+          <h2>Desconto ou acréscimo</h2>
+          <div class="row">
+            <label style="flex:2">Tipo de ajuste
+              <select id="sAdjMode">
+                <option value="none">Sem ajuste</option>
+                <option value="discount_percent">Desconto (%)</option>
+                <option value="discount_value">Desconto (R$)</option>
+                <option value="increase_percent">Acréscimo (%)</option>
+                <option value="increase_value">Acréscimo (R$)</option>
+              </select>
+            </label>
+            <label>Valor do ajuste <input id="sAdjValue" type="number" min="0" step="0.01" value="0"></label>
+          </div>
+          <div class="sale-preview" id="sAdjPreview">
+            <div><span>Total após ajuste</span><b>R$ 0,00</b></div>
+            <div><span>Nova margem estimada</span><b>R$ 0,00</b></div>
+            <div><span>Margem sobre a venda</span><b>0,0%</b></div>
+          </div>
+          <div class="hint" id="sAdjHint">O ajuste será distribuído proporcionalmente entre os itens e ficará registrado na venda.</div>
+        </div>
         <div class="row" style="justify-content:flex-end;margin-top:12px">
           <label class="chip oficina-only" style="margin-right:auto"><input type="checkbox" id="sKeep"> Manter os dados do cliente depois de salvar</label>
           <span class="msg" id="sMsg"></span>
@@ -310,6 +336,22 @@
             <th class="num" data-t="p" data-k="cost_price">Custo médio</th><th class="num" data-t="p" data-k="sale_price">Preço de venda</th>
             <th class="num" data-t="p" data-k="stock">Estoque</th><th class="num" data-t="p" data-k="min_stock">Mínimo (aviso)</th><th></th></tr></thead>
           <tbody id="pBody"></tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <h2>Retirada para uso próprio</h2>
+        <p class="muted" style="margin-top:0">Use quando retirar um produto do estoque para você ou para uso da oficina, em vez de vendê-lo. A quantidade será baixada do estoque, sem gerar venda, faturamento ou lucro.</p>
+        <div class="row">
+          <label style="flex:2">Produto <select id="wProd"></select></label>
+          <label style="max-width:130px">Quantidade <input id="wQty" type="number" min="1" step="1" value="1"></label>
+          <label style="flex:2">Observação (opcional) <input id="wNote" maxlength="250" placeholder="ex.: uso próprio"></label>
+          <button class="btn" id="addWithdrawal">Registrar retirada</button>
+        </div>
+        <div class="hint" id="wHint"></div>
+        <h2 style="margin-top:20px">Histórico de retiradas</h2>
+        <div class="overflow"><table>
+          <thead><tr><th>Data</th><th>Produto</th><th class="num">Qtd.</th><th class="num">Custo unit.</th><th class="num">Custo total</th><th>Observação</th><th>Registrado por</th></tr></thead>
+          <tbody id="wBody"></tbody>
         </table></div>
       </div>
       <div class="card">
@@ -566,7 +608,8 @@ const faltaDe = d => Number(d.total) - Number(d.paid);
 
 let me = { email: '', role: 'funcionario' };
 let products = [], services = [], lines = [], salesCache = [], clientsAll = [], clients = [], debts = [];
-let comprasCache = [], usersCache = [], auditCache = [], hojeCount = 0;
+let comprasCache = [], withdrawalsCache = [], usersCache = [], auditCache = [], hojeCount = 0;
+let archivedProductIds = new Set();
 const isAdmin = () => me.role === 'admin';
 
 document.addEventListener('input', e => {
@@ -720,7 +763,7 @@ function go(v) {
   VIEWS.forEach(x => $('v-' + x).classList.toggle('hidden', x !== v));
   if (v === 'home') renderHome();
   if (v === 'history') loadHistory();
-  if (v === 'products') loadCompras();
+  if (v === 'products') { loadCompras(); loadWithdrawals(); }
   if (v === 'clients') renderClients();
   if (v === 'debtors') renderDebtors();
   if (v === 'agenda') loadAgenda();
@@ -748,7 +791,7 @@ async function loadAll() {
   clientsAll = c.data; clients = c.data.filter(x => x.active);
   debts = d.data.filter(x => faltaDe(x) > 0.004);
   hojeCount = ag.data.length;
-  renderProducts(); renderServices(); fillItemSelect(); fillCompraSel(); fillPickers(); renderClients(); renderDebtors(); renderHome();
+  renderProducts(); renderServices(); fillItemSelect(); fillCompraSel(); fillWithdrawalSelect(); fillPickers(); renderClients(); renderDebtors(); renderHome();
 }
 function fillCats() {
   const cats = [...new Set([...products, ...services].map(x => x.category).filter(Boolean))].sort();
@@ -861,6 +904,44 @@ function renderCompras() {
 }
 RENDER.pur = renderCompras;
 
+/* ---------- retiradas para uso próprio ---------- */
+function fillWithdrawalSelect() {
+  const atual = $('wProd').value;
+  $('wProd').innerHTML = products.map(p => `<option value="${p.id}">${esc(p.code ? p.code + ' - ' : '')}${esc(p.name)} (estoque: ${p.stock})</option>`).join('');
+  if (products.some(p => String(p.id) === String(atual))) $('wProd').value = atual;
+}
+async function loadWithdrawals() {
+  if (!isAdmin()) return;
+  const { data, error } = await db.from('stock_withdrawals').select('*').order('created_at', { ascending: false }).limit(300);
+  if (error) return erro(error);
+  withdrawalsCache = data || [];
+  renderWithdrawals();
+}
+function renderWithdrawals() {
+  $('wBody').innerHTML = ordenar('w', withdrawalsCache).map(w => `<tr>
+    <td>${fmtData(w.created_at)}</td><td>${esc(w.product_code ? w.product_code + ' - ' : '')}${esc(w.product_name)}</td>
+    <td class="num">${w.qty}</td><td class="num">${money(w.unit_cost)}</td><td class="num">${money(w.total_cost)}</td>
+    <td>${esc(w.note || '-')}</td><td>${esc(w.created_by_email || '-')}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="muted">Nenhuma retirada registrada.</td></tr>';
+}
+RENDER.w = renderWithdrawals;
+$('addWithdrawal').onclick = async () => {
+  if (!isAdmin()) return alert('Somente administradores podem registrar retiradas.');
+  const productId = Number($('wProd').value), qty = Math.floor(Number($('wQty').value));
+  if (!productId) return alert('Escolha um produto.');
+  if (!(qty > 0)) return alert('Informe uma quantidade válida.');
+  $('addWithdrawal').disabled = true;
+  const { error } = await db.rpc('register_stock_withdrawal', {
+    p_product_id: productId, p_qty: qty, p_note: $('wNote').value.trim() || null
+  });
+  $('addWithdrawal').disabled = false;
+  if (error) return erro(error);
+  $('wQty').value = 1; $('wNote').value = '';
+  $('wHint').textContent = 'Retirada registrada. O estoque foi atualizado e a movimentação ficou salva no histórico, sem gerar venda ou lucro.';
+  $('wHint').style.color = 'var(--ok)';
+  await loadAll(); await loadWithdrawals();
+};
+
 /* ---------- serviços ---------- */
 function renderServices() {
   $('svBody').innerHTML = ordenar('sv', services).map(s => `<tr>
@@ -931,27 +1012,118 @@ $('addLine').onclick = () => {
   });
   $('iQty').value = 1; $('iQ').value = ''; fillItemSelect(); renderLines(); $('iQ').focus();
 };
-function renderLines() {
-  $('lines').innerHTML = lines.map((l, i) => `<tr>
-    <td>${esc(l.name)} <span class="muted">(${typeLabel(l.type)})</span></td><td class="num">${l.qty}</td>
-    <td class="num">${money(l.price)}</td><td class="num">${money(l.price * l.qty)}</td>
-    <td class="num"><button class="btn ghost small" onclick="lines.splice(${i},1);renderLines()">Remover</button></td></tr>`).join('')
-    || '<tr><td colspan="5" class="muted">Nenhum item adicionado.</td></tr>';
-  $('saleTotal').textContent = money(lines.reduce((t, l) => t + l.price * l.qty, 0));
+function centavos(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+function custoEstimado(l) {
+  if (l.paid !== null && l.paid !== undefined && l.paid !== '') return Number(l.paid) || 0;
+  if (l.type === 'product') return Number(products.find(p => String(p.id) === String(l.id))?.cost_price) || 0;
+  return 0;
 }
+function calcularAjusteVenda() {
+  const modo = isAdmin() ? $('sAdjMode').value : 'none';
+  const valor = isAdmin() ? Number($('sAdjValue').value || 0) : 0;
+  const subtotalBase = centavos(lines.reduce((t, l) => t + Number(l.price || 0) * Number(l.qty || 0), 0));
+  let descontoDesejado = 0, acrescimoDesejado = 0, mensagem = '';
+  let valido = Number.isFinite(valor) && valor >= 0;
+  if (!valido) mensagem = 'Informe um valor de ajuste válido.';
+  if (modo === 'discount_percent') {
+    if (valor > 100) { valido = false; mensagem = 'O desconto percentual não pode ultrapassar 100%.'; }
+    descontoDesejado = subtotalBase * valor / 100;
+  } else if (modo === 'discount_value') {
+    if (valor > subtotalBase + 0.001) { valido = false; mensagem = 'O desconto em reais não pode ser maior que o subtotal.'; }
+    descontoDesejado = Math.min(valor, subtotalBase);
+  } else if (modo === 'increase_percent') {
+    acrescimoDesejado = subtotalBase * valor / 100;
+  } else if (modo === 'increase_value') {
+    if (subtotalBase <= 0 && valor > 0) { valido = false; mensagem = 'Não é possível distribuir um acréscimo em reais entre itens sem preço.'; }
+    acrescimoDesejado = valor;
+  }
+  const alvo = Math.max(0, subtotalBase - descontoDesejado + acrescimoDesejado);
+  const fator = subtotalBase > 0 ? alvo / subtotalBase : 1;
+  const itens = lines.map(l => {
+    const precoFinal = centavos(Math.max(0, Number(l.price || 0) * fator));
+    return {
+      ...l,
+      base_price: centavos(l.price),
+      price: precoFinal,
+      discount_per_unit: centavos(Math.max(0, Number(l.price || 0) - precoFinal)),
+      surcharge_per_unit: centavos(Math.max(0, precoFinal - Number(l.price || 0))),
+      adjustment_type: modo,
+      adjustment_value: valor
+    };
+  });
+  const totalFinal = centavos(itens.reduce((t, l) => t + l.price * l.qty, 0));
+  const descontoTotal = centavos(Math.max(0, subtotalBase - totalFinal));
+  const acrescimoTotal = centavos(Math.max(0, totalFinal - subtotalBase));
+  const custoTotal = centavos(lines.reduce((t, l) => t + custoEstimado(l) * Number(l.qty || 0), 0));
+  const margem = centavos(totalFinal - custoTotal);
+  const margemPct = totalFinal > 0 ? margem / totalFinal * 100 : 0;
+  const temAjuste = modo !== 'none' && valor > 0 && (descontoTotal > 0 || acrescimoTotal > 0);
+  return { modo, valor, subtotalBase, itens, totalFinal, descontoTotal, acrescimoTotal, custoTotal, margem, margemPct, valido, mensagem, temAjuste };
+}
+function renderLines() {
+  const calc = calcularAjusteVenda();
+  $('lines').innerHTML = calc.itens.map((l, i) => `<tr>
+    <td>${esc(l.name)} <span class="muted">(${typeLabel(l.type)})</span></td><td class="num">${l.qty}</td>
+    <td class="num">${money(l.base_price)}</td><td class="num">${money(l.price)}</td><td class="num">${money(l.price * l.qty)}</td>
+    <td class="num"><button class="btn ghost small" onclick="lines.splice(${i},1);renderLines()">Remover</button></td></tr>`).join('')
+    || '<tr><td colspan="6" class="muted">Nenhum item adicionado.</td></tr>';
+  $('saleTotal').textContent = money(calc.totalFinal);
+  if ($('sAdjPreview')) {
+    $('sAdjPreview').innerHTML = `<div><span>Total após ajuste</span><b>${money(calc.totalFinal)}</b></div>
+      <div><span>Nova margem estimada</span><b>${money(calc.margem)}</b></div>
+      <div><span>Margem sobre a venda</span><b>${calc.margemPct.toFixed(1).replace('.', ',')}%</b></div>`;
+    $('sAdjHint').textContent = calc.mensagem || (calc.temAjuste
+      ? `${calc.descontoTotal > 0 ? 'Desconto aplicado: ' + money(calc.descontoTotal) : 'Acréscimo aplicado: ' + money(calc.acrescimoTotal)}. Subtotal original: ${money(calc.subtotalBase)}. Margem estimada considera o custo cadastrado dos produtos.`
+      : `Subtotal sem ajuste: ${money(calc.subtotalBase)}. A margem é estimada com base no custo cadastrado dos produtos.`);
+    $('sAdjHint').style.color = calc.valido ? 'var(--ok)' : '#c92a2a';
+  }
+}
+$('sAdjMode').addEventListener('change', () => {
+  $('sAdjValue').disabled = $('sAdjMode').value === 'none';
+  renderLines();
+});
+$('sAdjValue').addEventListener('input', renderLines);
+$('sAdjMode').value = 'none'; $('sAdjValue').disabled = true;
 async function salvarVenda(imprimir) {
   if (!lines.length) { $('sMsg').textContent = 'Adicione pelo menos um item.'; return; }
   if (!quick && $('sPay').value === 'Fiado' && !$('sClient').value) { $('sMsg').textContent = 'Escolha um cliente cadastrado para vender no fiado.'; return; }
+  const calc = calcularAjusteVenda();
+  if (!calc.valido) { $('sMsg').textContent = calc.mensagem; return; }
   $('sMsg').textContent = '';
   document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = true);
-  const { data, error } = await db.rpc('create_sale', {
-    p_customer: quick ? BALCAO_NOME : $('sCustomer').value.trim(), p_motorcycle: quick ? '' : $('sMoto').value.trim(), p_payment: $('sPay').value, p_items: lines,
-    p_client_id: !quick && $('sClient').value ? Number($('sClient').value) : null,
-    p_plate: quick ? null : ($('sPlate').value.trim().toUpperCase() || null), p_km: quick ? null : (parseInt($('sKm').value) || null)
-  });
+  let data = null, error = null;
+  try {
+    const resp = await db.rpc('create_sale', {
+      p_customer: quick ? BALCAO_NOME : $('sCustomer').value.trim(), p_motorcycle: quick ? '' : $('sMoto').value.trim(), p_payment: $('sPay').value, p_items: calc.itens,
+      p_client_id: !quick && $('sClient').value ? Number($('sClient').value) : null,
+      p_plate: quick ? null : ($('sPlate').value.trim().toUpperCase() || null), p_km: quick ? null : (parseInt($('sKm').value) || null)
+    });
+    data = resp.data; error = resp.error;
+    if (error) throw error;
+    if (calc.temAjuste) {
+      const meta = await db.rpc('save_sale_adjustment_metadata', {
+        p_sale_id: data.id,
+        p_base_total: calc.subtotalBase,
+        p_discount_total: calc.descontoTotal,
+        p_surcharge_total: calc.acrescimoTotal,
+        p_adjustment_type: calc.modo,
+        p_adjustment_value: calc.valor
+      });
+      if (meta.error) {
+        const rollback = await db.rpc('cancel_sale', { p_id: data.id });
+        if (rollback.error) throw new Error(`A venda foi criada, mas não foi possível registrar os dados do ajuste nem cancelar automaticamente. Venda nº ${data.numero}. Erro: ${meta.error.message}. Cancele a venda manualmente. ${rollback.error.message}`);
+        throw new Error(`O ajuste não pôde ser gravado na base de dados. A venda nº ${data.numero} foi cancelada e o estoque restaurado. Aplique a migração SQL fornecida e tente novamente. ${meta.error.message}`);
+      }
+    }
+  } catch (e) {
+    $('sMsg').textContent = e.message || String(e);
+    document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = false);
+    return;
+  }
   document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = false);
-  if (error) { $('sMsg').textContent = error.message; return; }
+  if (calc.temAjuste) { data.discount_total = calc.descontoTotal; data.surcharge_total = calc.acrescimoTotal; data.base_total = calc.subtotalBase; }
   lines = [];
+  $('sAdjMode').value = 'none'; $('sAdjValue').value = '0'; $('sAdjValue').disabled = true;
   if (!$('sKeep').checked) { ['sCustomer', 'sMoto', 'sPlate', 'sKm'].forEach(i => $(i).value = ''); limparPicker('s'); }
   renderLines(); loadAll();
   if (imprimir) printReceipt(data);
@@ -1009,6 +1181,8 @@ function printReceipt(s) {
     </div>`}
     <table><thead><tr><th>Descrição</th><th class="n">Qtd.</th><th class="n">Valor unit.</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table>
     <div class="grow"></div>
+    ${Number(s.discount_total) > 0 ? `<div style="text-align:right;margin-top:10px">Desconto: -${money(s.discount_total)}</div>` : ''}
+    ${Number(s.surcharge_total) > 0 ? `<div style="text-align:right;margin-top:10px">Acréscimo: +${money(s.surcharge_total)}</div>` : ''}
     <div class="tot"><div>Pagamento: <b>${esc(s.payment) || '-'}${s.payment === 'Fiado' ? ' (a pagar)' : ''}</b></div><div class="t">Total: ${money(s.total)}</div></div>
     ${balcao ? '' : '<div class="ass"><div>Assinatura do cliente</div><div>Responsável</div></div>'}
     <div class="rod">Obrigado pela preferência! &nbsp;·&nbsp; Documento sem valor fiscal.</div>
@@ -1097,16 +1271,22 @@ $('addAg').onclick = async () => {
 
 /* ---------- registro de vendas ---------- */
 async function loadHistory() {
-  const { data, error } = await db.from('sales').select('*').order('created_at', { ascending: false }).limit(1000);
-  if (error) return erro(error);
-  salesCache = data; renderHistory();
+  const [vendas, cadastroProdutos] = await Promise.all([
+    db.from('sales').select('*').order('created_at', { ascending: false }).limit(1000),
+    db.from('products').select('id,active')
+  ]);
+  if (vendas.error) return erro(vendas.error);
+  if (cadastroProdutos.error) return erro(cadastroProdutos.error);
+  archivedProductIds = new Set((cadastroProdutos.data || []).filter(p => p.active === false).map(p => String(p.id)));
+  salesCache = vendas.data; renderHistory();
 }
 ['hQ', 'hFrom', 'hTo', 'hSt', 'hType'].forEach(id => $(id).addEventListener('input', renderHistory));
 function renderHistory() {
   const q = $('hQ').value.toLowerCase(), a = $('hFrom').value, b = $('hTo').value, st = $('hSt').value, ty = $('hType').value;
+  const itensVisiveis = s => (s.items || []).filter(i => !(i.type === 'product' && archivedProductIds.has(String(i.id))));
   const rows = ordenar('h', salesCache.filter(s => {
     const d = new Date(s.created_at).toLocaleDateString('sv-SE');
-    const txt = [s.numero, s.customer, s.motorcycle, s.plate, s.items.map(i => i.name).join(' ')].join(' ').toLowerCase();
+    const txt = [s.numero, s.customer, s.motorcycle, s.plate, itensVisiveis(s).map(i => i.name).join(' ')].join(' ').toLowerCase();
     return (!q || txt.includes(q)) && (!a || d >= a) && (!b || d <= b) && (!st || s.status === st) && (!ty || (ty === 'balcao') === (s.customer === BALCAO_NOME));
   }));
   const ativas = rows.filter(s => s.status === 'ativa');
@@ -1117,8 +1297,8 @@ function renderHistory() {
     <td>${s.numero}</td><td>${fmtData(s.created_at)}</td><td>${esc(s.customer)}</td>
     <td>${esc(s.motorcycle)}${s.plate ? ' · ' + esc(s.plate) : ''}${s.km ? ' · ' + s.km + ' km' : ''}</td>
     <td>${esc(s.payment)}${s.payment === 'Fiado' && s.total - s.paid > 0.004 ? ` (falta ${money(s.total - s.paid)})` : ''}</td>
-    <td>${s.items.map(i => `${esc(i.name)} x${i.qty}`).join(', ')}</td>
-    <td class="num">${money(s.total)}</td>
+    <td>${itensVisiveis(s).map(i => `${esc(i.name)} x${i.qty}`).join(', ') || ((s.items || []).length ? '<span class="muted">Itens arquivados ocultados</span>' : '-')}</td>
+    <td class="num">${money(s.total)}${Number(s.discount_total) > 0 ? `<div class="muted" style="font-size:11px">Desconto: ${money(s.discount_total)}</div>` : ''}${Number(s.surcharge_total) > 0 ? `<div class="muted" style="font-size:11px">Acréscimo: ${money(s.surcharge_total)}</div>` : ''}</td>
     <td class="num"><button class="btn ghost small" onclick="printReceipt(salesCache.find(x => x.id === ${s.id}))">Imprimir</button>
       ${s.status === 'ativa' ? `<button class="btn ghost small" onclick="cancelar(${s.id})">Cancelar</button>` : ''}</td></tr>`).join('')
     || '<tr><td colspan="8" class="muted">Nenhuma venda encontrada.</td></tr>';
@@ -1232,8 +1412,8 @@ function editarDivida(id) {
 /* ---------- análises ---------- */
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const GRAFICOS = {
-  tempo: 'Faturamento no período', top: 'Mais vendidos (quantidade)', categoria: 'Faturamento por categoria', lucro: 'Lucro por categoria',
-  pagamento: 'Formas de pagamento', tipo: 'Oficina x balcão', faixa: 'Clientes por faixa etária', sexo: 'Clientes por sexo'
+  tempo: 'Faturamento e lucro no período', top: 'Mais vendidos (quantidade)', categoria: 'Faturamento e lucro por categoria', lucro: 'Ranking de lucro por categoria',
+  pagamento: 'Faturamento e lucro por forma de pagamento', tipo: 'Faturamento e lucro: oficina x balcão', faixa: 'Clientes por faixa etária', sexo: 'Clientes por sexo'
 };
 const PAL = ['#d9480f', '#1b2430', '#2b8a3e', '#1c7ed6', '#f08c00', '#7048e8', '#c2255c', '#0c8599', '#66717f', '#a9e34b'];
 let vendasAn = [], prodAn = [], servAn = [], charts = {}, graficosOn = ['tempo', 'top', 'categoria', 'pagamento'];
@@ -1297,21 +1477,39 @@ function renderAnalise() {
         plugins: { legend: { display: pizza, position: 'bottom' } }, scales: pizza ? {} : { [horiz ? 'x' : 'y']: { beginAtZero: true } } }
     });
   };
+  const desenharFinanceiro = (g, pares, horiz = false) => {
+    if (!$('ch_' + g)) return;
+    charts[g] = new Chart($('ch_' + g), {
+      type: 'bar',
+      data: { labels: pares.map(p => p[0]), datasets: [
+        { label: 'Faturamento', data: pares.map(p => Math.round(p[1] * 100) / 100), backgroundColor: '#d9480f' },
+        { label: 'Lucro estimado', data: pares.map(p => Math.round(p[2] * 100) / 100), backgroundColor: '#2b8a3e' }
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: horiz ? 'y' : 'x',
+        plugins: { legend: { display: true, position: 'bottom' } }, scales: { [horiz ? 'x' : 'y']: { beginAtZero: true } } }
+    });
+  };
+  const somarFinanceiro = chave => {
+    const m = {};
+    L.forEach(l => { const k = chave(l); const v = m[k] = m[k] || { rec: 0, luc: 0 }; v.rec += l.rec; v.luc += l.luc; });
+    return m;
+  };
   if (f.mes) {
-    const dias = new Date(f.ano || new Date().getFullYear(), f.mes, 0).getDate(), m = soma(L, l => l.d.getDate(), l => l.rec);
-    desenhar('tempo', 'bar', Array.from({ length: dias }, (_, k) => [String(k + 1), m[k + 1] || 0]), 'R$');
+    const dias = new Date(f.ano || new Date().getFullYear(), f.mes, 0).getDate(), m = somarFinanceiro(l => l.d.getDate());
+    desenharFinanceiro('tempo', Array.from({ length: dias }, (_, k) => [String(k + 1), m[k + 1]?.rec || 0, m[k + 1]?.luc || 0]));
   } else if (f.ano) {
-    const m = soma(L, l => l.d.getMonth(), l => l.rec);
-    desenhar('tempo', 'bar', MESES.map((nome, k) => [nome, m[k] || 0]), 'R$');
+    const m = somarFinanceiro(l => l.d.getMonth());
+    desenharFinanceiro('tempo', MESES.map((nome, k) => [nome, m[k]?.rec || 0, m[k]?.luc || 0]));
   } else {
-    const m = soma(L, l => `${l.d.getFullYear()}-${String(l.d.getMonth() + 1).padStart(2, '0')}`, l => l.rec);
-    desenhar('tempo', 'bar', Object.entries(m).sort(), 'R$');
+    const m = somarFinanceiro(l => `${l.d.getFullYear()}-${String(l.d.getMonth() + 1).padStart(2, '0')}`);
+    desenharFinanceiro('tempo', Object.entries(m).sort().map(([k, v]) => [k, v.rec, v.luc]));
   }
   desenhar('top', 'bar', top(soma(L, l => l.i.name, l => l.i.qty)), 'Quantidade', true);
-  desenhar('categoria', 'doughnut', top(soma(L, l => l.cat, l => l.rec), 8), 'R$');
-  desenhar('lucro', 'bar', top(soma(L, l => l.cat, l => l.luc), 8), 'R$');
-  desenhar('pagamento', 'doughnut', Object.entries(soma(L, l => l.s.payment || 'Sem forma', l => l.rec)), 'R$');
-  desenhar('tipo', 'doughnut', Object.entries(soma(L, l => l.s.customer === BALCAO_NOME ? 'Balcão' : 'Oficina', l => l.rec)), 'R$');
+  const categoriasFin = Object.entries(somarFinanceiro(l => l.cat)).map(([k, v]) => [k, v.rec, v.luc]).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  desenharFinanceiro('categoria', categoriasFin, true);
+  desenhar('lucro', 'bar', top(soma(L, l => l.cat, l => l.luc), 8), 'Lucro estimado (R$)', true);
+  desenharFinanceiro('pagamento', Object.entries(somarFinanceiro(l => l.s.payment || 'Sem forma')).map(([k, v]) => [k, v.rec, v.luc]), true);
+  desenharFinanceiro('tipo', Object.entries(somarFinanceiro(l => l.s.customer === BALCAO_NOME ? 'Balcão' : 'Oficina')).map(([k, v]) => [k, v.rec, v.luc]), true);
   const cs = [...new Set(L.map(l => l.s.client_id).filter(Boolean))].map(id => clientsAll.find(c => c.id === id)).filter(Boolean);
   const contar = chave => { const m = {}; cs.forEach(c => { const k = chave(c) || 'Não informado'; m[k] = (m[k] || 0) + 1; }); return m; };
   const mf = contar(c => c.age_range);
@@ -1446,7 +1644,7 @@ function baixar(blob, nome) {
 }
 async function baixarBase() {
   try {
-    const tabelas = ['products', 'services', 'sales', 'purchases', 'clients', 'payments', 'appointments', 'audit_log', 'profiles'], dados = {};
+    const tabelas = ['products', 'services', 'sales', 'purchases', 'stock_withdrawals', 'clients', 'payments', 'appointments', 'audit_log', 'profiles'], dados = {};
     for (const t of tabelas) dados[t] = await todas(t);
     const dia = new Date().toISOString().slice(0, 10);
     baixar(new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' }), `backup-zecamotos-${dia}.json`);
