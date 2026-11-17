@@ -97,10 +97,6 @@
   .ag .acts{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
   .tag{font-size:11px;background:var(--bg);border-radius:999px;padding:1px 8px;color:var(--muted)}
   .sale-adjust{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
-  .sale-preview{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px}
-  .sale-preview>div{background:#f6f7f8;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
-  .sale-preview span{display:block;color:var(--muted);font-size:12px}
-  .sale-preview b{display:block;font:700 21px 'Barlow Condensed',sans-serif}
   .discount-message{margin-top:6px;padding:6px 9px;border-left:3px solid #d4a017;background:#fff8db;color:#765400;font-size:12px;border-radius:3px}
   .discount-message.error{border-left-color:#c92a2a;background:#fff0f0;color:#a61e1e}
 </style>
@@ -215,35 +211,15 @@
           <label>Preço de venda <input id="iPrice" type="number" min="0" step="0.01"></label>
           <button class="btn" id="addLine">Adicionar</button>
         </div>
-        <div class="row admin-only" style="margin-top:10px">
-          <label style="flex:2">Desconto ou acréscimo deste item
-            <select id="iAdjMode">
-              <option value="none">Sem ajuste</option>
-              <option value="discount_percent">Desconto (%)</option>
-              <option value="discount_value">Desconto (R$ por unidade)</option>
-              <option value="increase_percent">Acréscimo (%)</option>
-              <option value="increase_value">Acréscimo (R$ por unidade)</option>
-            </select>
-          </label>
-          <label>Valor do ajuste por unidade <input id="iAdjValue" type="number" min="0" step="0.01" value="0" disabled></label>
-          <span class="help" style="align-self:center;max-width:280px">O ajuste é aplicado somente ao item que está sendo adicionado, não ao total da compra.</span>
-        </div>
         <div id="iPricePreview" class="discount-message admin-only hidden" aria-live="polite"></div>
       </div>
       <div class="card">
         <h2>Itens desta venda</h2>
         <div class="overflow"><table>
-          <thead><tr><th>Item</th><th class="num">Qtd.</th><th class="num">Preço tabela</th><th class="num">Ajuste/unid.</th><th class="num">Preço final</th><th class="num">Subtotal</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th class="num">Qtd.</th><th class="num">Preço cadastrado</th><th class="num">Diferença/unid.</th><th class="num">Preço de venda</th><th class="num">Subtotal</th><th></th></tr></thead>
           <tbody id="lines"></tbody>
         </table></div>
         <div class="total" id="saleTotal">R$ 0,00</div>
-        <div class="sale-preview" id="saleSummary">
-          <div><span>Subtotal tabela</span><b>R$ 0,00</b></div>
-          <div><span>Descontos nos itens</span><b>R$ 0,00</b></div>
-          <div><span>Acréscimos nos itens</span><b>R$ 0,00</b></div>
-          <div><span>Lucro estimado</span><b>R$ 0,00</b></div>
-        </div>
-        <div class="hint" id="saleAdjustHint">Cada desconto ou acréscimo fica vinculado ao item correspondente.</div>
         <div class="row" style="justify-content:flex-end;margin-top:12px">
           <label class="chip oficina-only" style="margin-right:auto"><input type="checkbox" id="sKeep"> Manter os dados do cliente depois de salvar</label>
           <span class="msg" id="sMsg"></span>
@@ -1009,75 +985,55 @@ function onItemChange() {
   $('iPrice').value = item ? (isProd ? item.sale_price : item.price) : '';
   renderPricePreview();
 }
-function calcularPrecoUnitario(precoBase, modo, valor) {
-  const base = centavos(Math.max(0, Number(precoBase) || 0));
-  const v = Number(valor || 0);
-  let preco = base, valido = Number.isFinite(v) && v >= 0, mensagem = '';
-  if (!valido) mensagem = 'Informe um valor de ajuste válido.';
-  if (modo === 'discount_percent') {
-    if (v > 100) { valido = false; mensagem = 'O desconto percentual deste item não pode ultrapassar 100%.'; }
-    preco = base * (1 - Math.min(100, Math.max(0, v)) / 100);
-  } else if (modo === 'discount_value') {
-    if (v > base + 0.001) { valido = false; mensagem = 'O desconto por unidade não pode ser maior que o preço do item.'; }
-    preco = base - Math.min(base, Math.max(0, v));
-  } else if (modo === 'increase_percent') {
-    preco = base * (1 + Math.max(0, v) / 100);
-  } else if (modo === 'increase_value') {
-    preco = base + Math.max(0, v);
-  }
-  return { preco: centavos(Math.max(0, preco)), valido, mensagem, modo, valor: v };
-}
-function ajustesEntradaItem() {
-  const modo = isAdmin() ? $('iAdjMode').value : 'none';
-  const valor = isAdmin() ? Number($('iAdjValue').value || 0) : 0;
-  return { modo, valor };
-}
 function renderPricePreview() {
   const box = $('iPricePreview');
   if (!box) return;
   const isProd = $('iType').value === 'product';
-  const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
-  const { modo, valor } = ajustesEntradaItem();
-  const isDiscount = modo === 'discount_percent' || modo === 'discount_value';
-  if (!isAdmin() || !item || modo === 'none' || valor <= 0) {
+  const item = (isProd ? products : services).find(x => String(x.id) === String($('iItem').value));
+  if (!isAdmin() || !item) {
     box.classList.add('hidden');
     box.classList.remove('error');
     box.innerHTML = '';
     return;
   }
-  const digitado = Math.max(0, Number($('iPrice').value) || 0);
-  const calcItem = calcularPrecoUnitario(digitado, modo, valor);
-  if (!calcItem.valido) {
-    box.classList.remove('hidden');
-    box.classList.add('error');
-    box.textContent = calcItem.mensagem;
-    return;
-  }
-  if (!isDiscount) {
-    box.classList.add('hidden');
-    box.classList.remove('error');
-    box.innerHTML = '';
-    return;
-  }
-  const descontoUnitario = centavos(Math.max(0, digitado - calcItem.preco));
-  if (descontoUnitario <= 0) {
-    box.classList.add('hidden');
-    box.classList.remove('error');
-    box.innerHTML = '';
-    return;
-  }
+
+  const precoCadastrado = centavos(Number(isProd ? item.sale_price : item.price) || 0);
+  const precoDigitado = centavos(Math.max(0, Number($('iPrice').value) || 0));
   const quantidade = Math.max(1, parseInt($('iQty').value, 10) || 1);
-  const descontoLinha = centavos(descontoUnitario * quantidade);
-  const percentual = digitado > 0 ? descontoUnitario / digitado * 100 : 0;
+  const diferenca = centavos(precoCadastrado - precoDigitado);
+  if (Math.abs(diferenca) < 0.01) {
+    box.classList.add('hidden');
+    box.classList.remove('error');
+    box.innerHTML = '';
+    return;
+  }
+
+  const custoInformado = isProd && item.cost_price !== null && item.cost_price !== undefined && item.cost_price !== '';
+  const custo = custoInformado ? centavos(Number(item.cost_price) || 0) : null;
+  const lucroUnit = custoInformado ? centavos(precoDigitado - custo) : null;
+  const lucroLinha = lucroUnit === null ? null : centavos(lucroUnit * quantidade);
+  const valorAjusteLinha = centavos(Math.abs(diferenca) * quantidade);
+  const percentual = precoCadastrado > 0 ? Math.abs(diferenca) / precoCadastrado * 100 : null;
+  const fmtPct = percentual === null ? '' : `${percentual.toFixed(1).replace('.', ',')}%`;
+
+  let mensagem = '';
+  if (diferenca > 0) {
+    mensagem = `Preço reduzido em <strong>${money(diferenca)} por unidade${fmtPct ? ` (${fmtPct})` : ''}</strong> em relação ao preço cadastrado. Desconto nesta quantidade (${quantidade}): <strong>${money(valorAjusteLinha)}</strong>.`;
+  } else {
+    mensagem = `Preço acima do cadastrado em <strong>${money(Math.abs(diferenca))} por unidade${fmtPct ? ` (${fmtPct})` : ''}</strong>. Acréscimo nesta quantidade (${quantidade}): <strong>${money(valorAjusteLinha)}</strong>.`;
+  }
+
   box.classList.remove('hidden', 'error');
-  box.innerHTML = `Desconto aplicado somente neste item: <strong>${money(descontoUnitario)} por unidade (${percentual.toFixed(1).replace('.', ',')}%)</strong>. Total nesta linha: <strong>${money(descontoLinha)}</strong>. Preço final: <strong>${money(calcItem.preco)} por unidade</strong>.`;
+  if (custoInformado && lucroUnit < -0.001) {
+    mensagem += ` <strong>ATENÇÃO: prejuízo estimado de ${money(Math.abs(lucroUnit))} por unidade (${money(Math.abs(lucroLinha))} nesta quantidade). O preço ficou abaixo do custo cadastrado (${money(custo)}).</strong>`;
+    box.classList.add('error');
+  } else if (custoInformado) {
+    mensagem += ` Lucro estimado: <strong>${money(lucroUnit)} por unidade (${money(lucroLinha)} nesta quantidade)</strong>.`;
+  }
+  box.innerHTML = mensagem;
 }
 $('iPrice').addEventListener('input', renderPricePreview);
-$('iAdjMode').addEventListener('change', () => {
-  $('iAdjValue').disabled = $('iAdjMode').value === 'none';
-  renderPricePreview();
-});
-$('iAdjValue').addEventListener('input', renderPricePreview);
+$('iQty').addEventListener('input', renderPricePreview);
 $('iType').onchange = fillItemSelect;
 $('iItem').onchange = onItemChange;
 $('iQ').addEventListener('input', () => {
@@ -1091,23 +1047,19 @@ $('addLine').onclick = () => {
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
   if (!item) return alert('Escolha um item primeiro.');
-  const precoDigitado = Math.max(0, Number($('iPrice').value) || 0);
-  const { modo, valor } = ajustesEntradaItem();
-  const calcItem = calcularPrecoUnitario(precoDigitado, modo, valor);
-  if (!calcItem.valido) return alert(calcItem.mensagem);
+  const precoVenda = centavos(Math.max(0, Number($('iPrice').value) || 0));
   const precoTabela = centavos(Number(isProd ? item.sale_price : item.price) || 0);
-  const diferencaTabela = centavos(precoTabela - calcItem.preco);
+  const diferencaTabela = centavos(precoTabela - precoVenda);
+  const quantidade = Math.max(1, parseInt($('iQty').value) || 1);
   lines.push({
     type: $('iType').value, id: item.id, code: item.code || null, name: item.name,
-    qty: Math.max(1, parseInt($('iQty').value) || 1), paid: null,
+    qty: quantidade, paid: null,
     base_price: precoTabela,
-    price: calcItem.preco,
+    price: precoVenda,
     discount_per_unit: centavos(Math.max(0, diferencaTabela)),
-    surcharge_per_unit: centavos(Math.max(0, -diferencaTabela)),
-    adjustment_type: modo,
-    adjustment_value: modo === 'none' ? 0 : valor
+    surcharge_per_unit: centavos(Math.max(0, -diferencaTabela))
   });
-  $('iQty').value = 1; $('iQ').value = ''; $('iAdjMode').value = 'none'; $('iAdjValue').value = '0'; $('iAdjValue').disabled = true;
+  $('iQty').value = 1; $('iQ').value = '';
   fillItemSelect(); renderLines(); $('iQ').focus();
 };
 function centavos(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
@@ -1148,13 +1100,6 @@ function renderLines() {
       <td class="num"><button class="btn ghost small" onclick="lines.splice(${i},1);renderLines()">Remover</button></td></tr>`;
   }).join('') || '<tr><td colspan="7" class="muted">Nenhum item adicionado.</td></tr>';
   $('saleTotal').textContent = money(calc.totalFinal);
-  $('saleSummary').innerHTML = `<div><span>Subtotal tabela</span><b>${money(calc.subtotalBase)}</b></div>
-    <div><span>Descontos nos itens</span><b>${money(calc.descontoTotal)}</b></div>
-    <div><span>Acréscimos nos itens</span><b>${money(calc.acrescimoTotal)}</b></div>
-    <div><span>Lucro estimado</span><b>${money(calc.margem)}</b></div>`;
-  $('saleAdjustHint').textContent = calc.temAjuste
-    ? `Ajustes por item: ${calc.descontoTotal > 0 ? 'descontos de ' + money(calc.descontoTotal) : ''}${calc.descontoTotal > 0 && calc.acrescimoTotal > 0 ? ' e ' : ''}${calc.acrescimoTotal > 0 ? 'acréscimos de ' + money(calc.acrescimoTotal) : ''}. A margem estimada considera o custo cadastrado dos produtos.`
-    : 'Nenhum desconto ou acréscimo aplicado. A margem é estimada com base no custo cadastrado dos produtos.';
 }
 async function salvarVenda(imprimir) {
   if (!lines.length) { $('sMsg').textContent = 'Adicione pelo menos um item.'; return; }
