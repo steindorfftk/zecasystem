@@ -1345,10 +1345,19 @@ async function loadHistory() {
 ['hQ', 'hFrom', 'hTo', 'hSt', 'hType'].forEach(id => $(id).addEventListener('input', renderHistory));
 function renderHistory() {
   const q = $('hQ').value.toLowerCase(), a = $('hFrom').value, b = $('hTo').value, st = $('hSt').value, ty = $('hType').value;
-  const itensVisiveis = s => (s.items || []).filter(itemEstaAtivo);
+  const itensVisiveis = s => (Array.isArray(s.items) ? s.items : []).filter(itemEstaAtivo);
+  const vendaArquivada = s =>
+    s.archived === true || s.active === false ||
+    s.status === 'arquivada' || s.status === 'archived';
   const rows = ordenar('h', salesCache.filter(s => {
+    // Não listar vendas explicitamente arquivadas nem vendas compostas
+    // exclusivamente por produtos/serviços que já foram arquivados.
+    if (vendaArquivada(s)) return false;
+    const itens = Array.isArray(s.items) ? s.items : [];
+    const visiveis = itensVisiveis(s);
+    if (itens.length > 0 && visiveis.length === 0) return false;
     const d = new Date(s.created_at).toLocaleDateString('sv-SE');
-    const txt = [s.numero, s.customer, s.motorcycle, s.plate, itensVisiveis(s).map(i => i.name).join(' ')].join(' ').toLowerCase();
+    const txt = [s.numero, s.customer, s.motorcycle, s.plate, visiveis.map(i => i.name).join(' ')].join(' ').toLowerCase();
     return (!q || txt.includes(q)) && (!a || d >= a) && (!b || d <= b) && (!st || s.status === st) && (!ty || (ty === 'balcao') === (s.customer === BALCAO_NOME));
   }));
   const ativas = rows.filter(s => s.status === 'ativa');
