@@ -101,12 +101,8 @@
   .sale-preview>div{background:#f6f7f8;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
   .sale-preview span{display:block;color:var(--muted);font-size:12px}
   .sale-preview b{display:block;font:700 21px 'Barlow Condensed',sans-serif}
-  .price-preview{margin-top:10px;padding:12px 14px;background:#fff3bf;border:1px solid #f0c419;border-left:5px solid #e0a800;border-radius:6px;color:#5c4300;font-size:13px}
-  .price-preview .pv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:7px}
-  .price-preview .pv-item{background:rgba(255,255,255,.58);border-radius:4px;padding:7px 9px}
-  .price-preview b{display:block;font:700 20px 'Barlow Condensed',sans-serif;color:#493400}
-  .price-preview .pv-note{margin-top:6px;font-size:12px}
-  .price-preview .negative{color:#b42318}
+  .discount-message{margin-top:6px;padding:6px 9px;border-left:3px solid #d4a017;background:#fff8db;color:#765400;font-size:12px;border-radius:3px}
+  .discount-message.error{border-left-color:#c92a2a;background:#fff0f0;color:#a61e1e}
 </style>
 </head>
 <body>
@@ -232,7 +228,7 @@
           <label>Valor do ajuste por unidade <input id="iAdjValue" type="number" min="0" step="0.01" value="0" disabled></label>
           <span class="help" style="align-self:center;max-width:280px">O ajuste é aplicado somente ao item que está sendo adicionado, não ao total da compra.</span>
         </div>
-        <div id="iPricePreview" class="price-preview admin-only hidden" aria-live="polite"></div>
+        <div id="iPricePreview" class="discount-message admin-only hidden" aria-live="polite"></div>
       </div>
       <div class="card">
         <h2>Itens desta venda</h2>
@@ -1041,31 +1037,40 @@ function renderPricePreview() {
   if (!box) return;
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
-  if (!isAdmin() || !item) { box.classList.add('hidden'); box.innerHTML = ''; return; }
-  const tabela = Number(isProd ? item.sale_price : item.price) || 0;
-  const custo = isProd ? (Number(item.cost_price) || 0) : null;
-  const digitado = Math.max(0, Number($('iPrice').value) || 0);
   const { modo, valor } = ajustesEntradaItem();
-  const calcItem = calcularPrecoUnitario(digitado, modo, valor);
-  box.classList.remove('hidden');
-  if (!calcItem.valido) {
-    box.innerHTML = `<strong>${esc(calcItem.mensagem)}</strong><div class="pv-note">Corrija o ajuste deste item antes de adicioná-lo à venda.</div>`;
+  const isDiscount = modo === 'discount_percent' || modo === 'discount_value';
+  if (!isAdmin() || !item || modo === 'none' || valor <= 0) {
+    box.classList.add('hidden');
+    box.classList.remove('error');
+    box.innerHTML = '';
     return;
   }
-  const diferenca = centavos(tabela - calcItem.preco);
-  const percentual = tabela > 0 ? Math.abs(diferenca) / tabela * 100 : 0;
-  const valorDif = Math.abs(diferenca);
-  const tipo = diferenca > 0.004 ? 'Desconto neste item em relação ao preço cadastrado' : diferenca < -0.004 ? 'Acréscimo neste item em relação ao preço cadastrado' : 'Preço final igual ao cadastrado';
-  const margem = custo === null ? null : centavos(calcItem.preco - custo);
-  const margemPct = custo === null || calcItem.preco <= 0 ? 0 : margem / calcItem.preco * 100;
-  const situacao = custo === null ? 'Custo não cadastrado para serviço' : margem < -0.004 ? 'PREJUÍZO em relação ao custo' : margem <= 0.004 ? 'Sem lucro sobre o custo' : 'Lucro sobre o custo';
-  box.innerHTML = `<strong>${esc(tipo)}</strong><div class="pv-grid">
-    <div class="pv-item"><span>Preço cadastrado</span><b>${money(tabela)}</b></div>
-    <div class="pv-item"><span>Preço digitado</span><b>${money(digitado)}</b></div>
-    <div class="pv-item"><span>${diferenca >= 0 ? 'Desconto total por unidade' : 'Acréscimo total por unidade'}</span><b>${money(valorDif)} (${percentual.toFixed(1).replace('.', ',')}%)</b></div>
-    <div class="pv-item"><span>Preço final por unidade</span><b>${money(calcItem.preco)}</b></div>
-    ${custo === null ? '<div class="pv-item"><span>Custo</span><b>Não cadastrado</b></div>' : `<div class="pv-item"><span>Custo de compra</span><b>${money(custo)}</b></div><div class="pv-item"><span>${situacao}</span><b class="${margem < -0.004 ? 'negative' : ''}">${money(margem)} (${margemPct.toFixed(1).replace('.', ',')}%)</b></div>`}
-  </div><div class="pv-note">O ajuste selecionado será aplicado somente a este item. O comparativo considera o preço final por unidade e o preço de tabela cadastrado.</div>`;
+  const digitado = Math.max(0, Number($('iPrice').value) || 0);
+  const calcItem = calcularPrecoUnitario(digitado, modo, valor);
+  if (!calcItem.valido) {
+    box.classList.remove('hidden');
+    box.classList.add('error');
+    box.textContent = calcItem.mensagem;
+    return;
+  }
+  if (!isDiscount) {
+    box.classList.add('hidden');
+    box.classList.remove('error');
+    box.innerHTML = '';
+    return;
+  }
+  const descontoUnitario = centavos(Math.max(0, digitado - calcItem.preco));
+  if (descontoUnitario <= 0) {
+    box.classList.add('hidden');
+    box.classList.remove('error');
+    box.innerHTML = '';
+    return;
+  }
+  const quantidade = Math.max(1, parseInt($('iQty').value, 10) || 1);
+  const descontoLinha = centavos(descontoUnitario * quantidade);
+  const percentual = digitado > 0 ? descontoUnitario / digitado * 100 : 0;
+  box.classList.remove('hidden', 'error');
+  box.innerHTML = `Desconto aplicado somente neste item: <strong>${money(descontoUnitario)} por unidade (${percentual.toFixed(1).replace('.', ',')}%)</strong>. Total nesta linha: <strong>${money(descontoLinha)}</strong>. Preço final: <strong>${money(calcItem.preco)} por unidade</strong>.`;
 }
 $('iPrice').addEventListener('input', renderPricePreview);
 $('iAdjMode').addEventListener('change', () => {
@@ -1202,11 +1207,7 @@ $('saveSaleQuick').onclick = () => salvarVenda(false);
 function printReceipt(s) {
   const balcao = s.customer === BALCAO_NOME;
   const itens = s.items.map(i => {
-    const base = Number(i.base_price ?? i.price ?? 0);
-    const desconto = Number(i.discount_per_unit || 0) * Number(i.qty || 0);
-    const acrescimo = Number(i.surcharge_per_unit || 0) * Number(i.qty || 0);
-    const ajuste = desconto > 0 ? `−${money(desconto)}` : acrescimo > 0 ? `+${money(acrescimo)}` : '—';
-    return `<tr><td>${esc(i.name)}</td><td class="n">${i.qty}</td><td class="n">${money(base)}</td><td class="n">${ajuste}</td><td class="n">${money(i.price)}</td><td class="n">${money(i.price * i.qty)}</td></tr>`;
+    return `<tr><td>${esc(i.name)}</td><td class="n">${i.qty}</td><td class="n">${money(i.price)}</td><td class="n">${money(i.price * i.qty)}</td></tr>`;
   }).join('');
   const nome = `<div class="nome">${esc(NOTA_NOME)}</div>`, nomeFb = `<div class=nome>${esc(NOTA_NOME)}</div>`;
   const logo = NOTA_LOGO
@@ -1250,10 +1251,8 @@ function printReceipt(s) {
       <div><span>Placa</span>${esc(s.plate) || '-'}</div>
       <div><span>Quilometragem</span>${s.km ? Number(s.km).toLocaleString('pt-BR') + ' km' : '-'}</div>
     </div>`}
-    <table><thead><tr><th>Descrição</th><th class="n">Qtd.</th><th class="n">Preço tabela/un.</th><th class="n">Ajuste total</th><th class="n">Preço final/un.</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table>
+    <table><thead><tr><th>Descrição</th><th class="n">Qtd.</th><th class="n">Preço unitário</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table>
     <div class="grow"></div>
-    ${Number(s.discount_total) > 0 ? `<div style="text-align:right;margin-top:10px">Desconto: -${money(s.discount_total)}</div>` : ''}
-    ${Number(s.surcharge_total) > 0 ? `<div style="text-align:right;margin-top:10px">Acréscimo: +${money(s.surcharge_total)}</div>` : ''}
     <div class="tot"><div>Pagamento: <b>${esc(s.payment) || '-'}${s.payment === 'Fiado' ? ' (a pagar)' : ''}</b></div><div class="t">Total: ${money(s.total)}</div></div>
     ${balcao ? '' : '<div class="ass"><div>Assinatura do cliente</div><div>Responsável</div></div>'}
     <div class="rod">Obrigado pela preferência! &nbsp;·&nbsp; Documento sem valor fiscal.</div>
