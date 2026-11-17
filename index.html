@@ -101,6 +101,12 @@
   .sale-preview>div{background:#f6f7f8;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
   .sale-preview span{display:block;color:var(--muted);font-size:12px}
   .sale-preview b{display:block;font:700 21px 'Barlow Condensed',sans-serif}
+  .price-preview{margin-top:10px;padding:12px 14px;background:#fff3bf;border:1px solid #f0c419;border-left:5px solid #e0a800;border-radius:6px;color:#5c4300;font-size:13px}
+  .price-preview .pv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:7px}
+  .price-preview .pv-item{background:rgba(255,255,255,.58);border-radius:4px;padding:7px 9px}
+  .price-preview b{display:block;font:700 20px 'Barlow Condensed',sans-serif;color:#493400}
+  .price-preview .pv-note{margin-top:6px;font-size:12px}
+  .price-preview .negative{color:#b42318}
 </style>
 </head>
 <body>
@@ -161,7 +167,26 @@
 
     <!-- NOVA VENDA -->
     <div id="v-sale" class="hidden">
-      <div style="margin-bottom:12px"><button class="btn ghost small" data-go="home">← Voltar ao início</button></div>
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <button class="btn ghost small" data-go="home">← Voltar ao início</button>
+        <button class="btn ghost small admin-only" id="toggleWithdrawalPanel" type="button">Retirada para uso próprio</button>
+      </div>
+      <div class="card admin-only hidden" id="stockWithdrawal">
+        <h2>Retirada para uso próprio</h2>
+        <p class="muted" style="margin-top:0">Use quando retirar um produto do estoque para você ou para uso da oficina, em vez de vendê-lo. A quantidade será baixada do estoque, sem gerar venda, faturamento ou lucro.</p>
+        <div class="row">
+          <label style="flex:2">Produto <select id="wProd"></select></label>
+          <label style="max-width:130px">Quantidade <input id="wQty" type="number" min="1" step="1" value="1"></label>
+          <label style="flex:2">Observação (opcional) <input id="wNote" maxlength="250" placeholder="ex.: uso próprio"></label>
+          <button class="btn" id="addWithdrawal">Registrar retirada</button>
+        </div>
+        <div class="hint" id="wHint"></div>
+        <h2 style="margin-top:20px">Histórico de retiradas</h2>
+        <div class="overflow"><table>
+          <thead><tr><th>Data</th><th>Produto</th><th class="num">Qtd.</th><th class="num">Custo unit.</th><th class="num">Custo total</th><th>Observação</th><th>Registrado por</th></tr></thead>
+          <tbody id="wBody"></tbody>
+        </table></div>
+      </div>
       <div class="card">
         <div class="seg">
           <button class="btn ghost on" id="modoOficina">Venda da oficina</button>
@@ -194,35 +219,35 @@
           <label>Preço de venda <input id="iPrice" type="number" min="0" step="0.01"></label>
           <button class="btn" id="addLine">Adicionar</button>
         </div>
+        <div class="row admin-only" style="margin-top:10px">
+          <label style="flex:2">Desconto ou acréscimo deste item
+            <select id="iAdjMode">
+              <option value="none">Sem ajuste</option>
+              <option value="discount_percent">Desconto (%)</option>
+              <option value="discount_value">Desconto (R$ por unidade)</option>
+              <option value="increase_percent">Acréscimo (%)</option>
+              <option value="increase_value">Acréscimo (R$ por unidade)</option>
+            </select>
+          </label>
+          <label>Valor do ajuste por unidade <input id="iAdjValue" type="number" min="0" step="0.01" value="0" disabled></label>
+          <span class="help" style="align-self:center;max-width:280px">O ajuste é aplicado somente ao item que está sendo adicionado, não ao total da compra.</span>
+        </div>
+        <div id="iPricePreview" class="price-preview admin-only hidden" aria-live="polite"></div>
       </div>
       <div class="card">
         <h2>Itens desta venda</h2>
         <div class="overflow"><table>
-          <thead><tr><th>Item</th><th class="num">Qtd.</th><th class="num">Preço tabela</th><th class="num">Preço ajustado</th><th class="num">Subtotal</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th class="num">Qtd.</th><th class="num">Preço tabela</th><th class="num">Ajuste/unid.</th><th class="num">Preço final</th><th class="num">Subtotal</th><th></th></tr></thead>
           <tbody id="lines"></tbody>
         </table></div>
         <div class="total" id="saleTotal">R$ 0,00</div>
-        <div class="sale-adjust admin-only">
-          <h2>Desconto ou acréscimo</h2>
-          <div class="row">
-            <label style="flex:2">Tipo de ajuste
-              <select id="sAdjMode">
-                <option value="none">Sem ajuste</option>
-                <option value="discount_percent">Desconto (%)</option>
-                <option value="discount_value">Desconto (R$)</option>
-                <option value="increase_percent">Acréscimo (%)</option>
-                <option value="increase_value">Acréscimo (R$)</option>
-              </select>
-            </label>
-            <label>Valor do ajuste <input id="sAdjValue" type="number" min="0" step="0.01" value="0"></label>
-          </div>
-          <div class="sale-preview" id="sAdjPreview">
-            <div><span>Total após ajuste</span><b>R$ 0,00</b></div>
-            <div><span>Nova margem estimada</span><b>R$ 0,00</b></div>
-            <div><span>Margem sobre a venda</span><b>0,0%</b></div>
-          </div>
-          <div class="hint" id="sAdjHint">O ajuste será distribuído proporcionalmente entre os itens e ficará registrado na venda.</div>
+        <div class="sale-preview" id="saleSummary">
+          <div><span>Subtotal tabela</span><b>R$ 0,00</b></div>
+          <div><span>Descontos nos itens</span><b>R$ 0,00</b></div>
+          <div><span>Acréscimos nos itens</span><b>R$ 0,00</b></div>
+          <div><span>Lucro estimado</span><b>R$ 0,00</b></div>
         </div>
+        <div class="hint" id="saleAdjustHint">Cada desconto ou acréscimo fica vinculado ao item correspondente.</div>
         <div class="row" style="justify-content:flex-end;margin-top:12px">
           <label class="chip oficina-only" style="margin-right:auto"><input type="checkbox" id="sKeep"> Manter os dados do cliente depois de salvar</label>
           <span class="msg" id="sMsg"></span>
@@ -336,22 +361,6 @@
             <th class="num" data-t="p" data-k="cost_price">Custo médio</th><th class="num" data-t="p" data-k="sale_price">Preço de venda</th>
             <th class="num" data-t="p" data-k="stock">Estoque</th><th class="num" data-t="p" data-k="min_stock">Mínimo (aviso)</th><th></th></tr></thead>
           <tbody id="pBody"></tbody>
-        </table></div>
-      </div>
-      <div class="card">
-        <h2>Retirada para uso próprio</h2>
-        <p class="muted" style="margin-top:0">Use quando retirar um produto do estoque para você ou para uso da oficina, em vez de vendê-lo. A quantidade será baixada do estoque, sem gerar venda, faturamento ou lucro.</p>
-        <div class="row">
-          <label style="flex:2">Produto <select id="wProd"></select></label>
-          <label style="max-width:130px">Quantidade <input id="wQty" type="number" min="1" step="1" value="1"></label>
-          <label style="flex:2">Observação (opcional) <input id="wNote" maxlength="250" placeholder="ex.: uso próprio"></label>
-          <button class="btn" id="addWithdrawal">Registrar retirada</button>
-        </div>
-        <div class="hint" id="wHint"></div>
-        <h2 style="margin-top:20px">Histórico de retiradas</h2>
-        <div class="overflow"><table>
-          <thead><tr><th>Data</th><th>Produto</th><th class="num">Qtd.</th><th class="num">Custo unit.</th><th class="num">Custo total</th><th>Observação</th><th>Registrado por</th></tr></thead>
-          <tbody id="wBody"></tbody>
         </table></div>
       </div>
       <div class="card">
@@ -763,7 +772,7 @@ function go(v) {
   VIEWS.forEach(x => $('v-' + x).classList.toggle('hidden', x !== v));
   if (v === 'home') renderHome();
   if (v === 'history') loadHistory();
-  if (v === 'products') { loadCompras(); loadWithdrawals(); }
+  if (v === 'products') loadCompras();
   if (v === 'clients') renderClients();
   if (v === 'debtors') renderDebtors();
   if (v === 'agenda') loadAgenda();
@@ -981,6 +990,16 @@ function setMode(q) {
 }
 $('modoOficina').onclick = () => setMode(false);
 $('modoRapida').onclick = () => setMode(true);
+$('toggleWithdrawalPanel').onclick = async () => {
+  const panel = $('stockWithdrawal');
+  const abrir = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !abrir);
+  if (abrir) {
+    fillWithdrawalSelect();
+    await loadWithdrawals();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
 
 const casaItem = x => { const q = $('iQ').value.trim().toLowerCase(); return !q || (x.code || '').toLowerCase().includes(q) || x.name.toLowerCase().includes(q); };
 function fillItemSelect() {
@@ -992,7 +1011,68 @@ function onItemChange() {
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
   $('iPrice').value = item ? (isProd ? item.sale_price : item.price) : '';
+  renderPricePreview();
 }
+function calcularPrecoUnitario(precoBase, modo, valor) {
+  const base = centavos(Math.max(0, Number(precoBase) || 0));
+  const v = Number(valor || 0);
+  let preco = base, valido = Number.isFinite(v) && v >= 0, mensagem = '';
+  if (!valido) mensagem = 'Informe um valor de ajuste válido.';
+  if (modo === 'discount_percent') {
+    if (v > 100) { valido = false; mensagem = 'O desconto percentual deste item não pode ultrapassar 100%.'; }
+    preco = base * (1 - Math.min(100, Math.max(0, v)) / 100);
+  } else if (modo === 'discount_value') {
+    if (v > base + 0.001) { valido = false; mensagem = 'O desconto por unidade não pode ser maior que o preço do item.'; }
+    preco = base - Math.min(base, Math.max(0, v));
+  } else if (modo === 'increase_percent') {
+    preco = base * (1 + Math.max(0, v) / 100);
+  } else if (modo === 'increase_value') {
+    preco = base + Math.max(0, v);
+  }
+  return { preco: centavos(Math.max(0, preco)), valido, mensagem, modo, valor: v };
+}
+function ajustesEntradaItem() {
+  const modo = isAdmin() ? $('iAdjMode').value : 'none';
+  const valor = isAdmin() ? Number($('iAdjValue').value || 0) : 0;
+  return { modo, valor };
+}
+function renderPricePreview() {
+  const box = $('iPricePreview');
+  if (!box) return;
+  const isProd = $('iType').value === 'product';
+  const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
+  if (!isAdmin() || !item) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const tabela = Number(isProd ? item.sale_price : item.price) || 0;
+  const custo = isProd ? (Number(item.cost_price) || 0) : null;
+  const digitado = Math.max(0, Number($('iPrice').value) || 0);
+  const { modo, valor } = ajustesEntradaItem();
+  const calcItem = calcularPrecoUnitario(digitado, modo, valor);
+  box.classList.remove('hidden');
+  if (!calcItem.valido) {
+    box.innerHTML = `<strong>${esc(calcItem.mensagem)}</strong><div class="pv-note">Corrija o ajuste deste item antes de adicioná-lo à venda.</div>`;
+    return;
+  }
+  const diferenca = centavos(tabela - calcItem.preco);
+  const percentual = tabela > 0 ? Math.abs(diferenca) / tabela * 100 : 0;
+  const valorDif = Math.abs(diferenca);
+  const tipo = diferenca > 0.004 ? 'Desconto neste item em relação ao preço cadastrado' : diferenca < -0.004 ? 'Acréscimo neste item em relação ao preço cadastrado' : 'Preço final igual ao cadastrado';
+  const margem = custo === null ? null : centavos(calcItem.preco - custo);
+  const margemPct = custo === null || calcItem.preco <= 0 ? 0 : margem / calcItem.preco * 100;
+  const situacao = custo === null ? 'Custo não cadastrado para serviço' : margem < -0.004 ? 'PREJUÍZO em relação ao custo' : margem <= 0.004 ? 'Sem lucro sobre o custo' : 'Lucro sobre o custo';
+  box.innerHTML = `<strong>${esc(tipo)}</strong><div class="pv-grid">
+    <div class="pv-item"><span>Preço cadastrado</span><b>${money(tabela)}</b></div>
+    <div class="pv-item"><span>Preço digitado</span><b>${money(digitado)}</b></div>
+    <div class="pv-item"><span>${diferenca >= 0 ? 'Desconto total por unidade' : 'Acréscimo total por unidade'}</span><b>${money(valorDif)} (${percentual.toFixed(1).replace('.', ',')}%)</b></div>
+    <div class="pv-item"><span>Preço final por unidade</span><b>${money(calcItem.preco)}</b></div>
+    ${custo === null ? '<div class="pv-item"><span>Custo</span><b>Não cadastrado</b></div>' : `<div class="pv-item"><span>Custo de compra</span><b>${money(custo)}</b></div><div class="pv-item"><span>${situacao}</span><b class="${margem < -0.004 ? 'negative' : ''}">${money(margem)} (${margemPct.toFixed(1).replace('.', ',')}%)</b></div>`}
+  </div><div class="pv-note">O ajuste selecionado será aplicado somente a este item. O comparativo considera o preço final por unidade e o preço de tabela cadastrado.</div>`;
+}
+$('iPrice').addEventListener('input', renderPricePreview);
+$('iAdjMode').addEventListener('change', () => {
+  $('iAdjValue').disabled = $('iAdjMode').value === 'none';
+  renderPricePreview();
+});
+$('iAdjValue').addEventListener('input', renderPricePreview);
 $('iType').onchange = fillItemSelect;
 $('iItem').onchange = onItemChange;
 $('iQ').addEventListener('input', () => {
@@ -1006,11 +1086,24 @@ $('addLine').onclick = () => {
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
   if (!item) return alert('Escolha um item primeiro.');
+  const precoDigitado = Math.max(0, Number($('iPrice').value) || 0);
+  const { modo, valor } = ajustesEntradaItem();
+  const calcItem = calcularPrecoUnitario(precoDigitado, modo, valor);
+  if (!calcItem.valido) return alert(calcItem.mensagem);
+  const precoTabela = centavos(Number(isProd ? item.sale_price : item.price) || 0);
+  const diferencaTabela = centavos(precoTabela - calcItem.preco);
   lines.push({
-    type: $('iType').value, id: item.id, code: item.code || null, name: item.name, qty: Math.max(1, parseInt($('iQty').value) || 1),
-    paid: null, price: +$('iPrice').value || 0
+    type: $('iType').value, id: item.id, code: item.code || null, name: item.name,
+    qty: Math.max(1, parseInt($('iQty').value) || 1), paid: null,
+    base_price: precoTabela,
+    price: calcItem.preco,
+    discount_per_unit: centavos(Math.max(0, diferencaTabela)),
+    surcharge_per_unit: centavos(Math.max(0, -diferencaTabela)),
+    adjustment_type: modo,
+    adjustment_value: modo === 'none' ? 0 : valor
   });
-  $('iQty').value = 1; $('iQ').value = ''; fillItemSelect(); renderLines(); $('iQ').focus();
+  $('iQty').value = 1; $('iQ').value = ''; $('iAdjMode').value = 'none'; $('iAdjValue').value = '0'; $('iAdjValue').disabled = true;
+  fillItemSelect(); renderLines(); $('iQ').focus();
 };
 function centavos(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
 function custoEstimado(l) {
@@ -1019,76 +1112,49 @@ function custoEstimado(l) {
   return 0;
 }
 function calcularAjusteVenda() {
-  const modo = isAdmin() ? $('sAdjMode').value : 'none';
-  const valor = isAdmin() ? Number($('sAdjValue').value || 0) : 0;
-  const subtotalBase = centavos(lines.reduce((t, l) => t + Number(l.price || 0) * Number(l.qty || 0), 0));
-  let descontoDesejado = 0, acrescimoDesejado = 0, mensagem = '';
-  let valido = Number.isFinite(valor) && valor >= 0;
-  if (!valido) mensagem = 'Informe um valor de ajuste válido.';
-  if (modo === 'discount_percent') {
-    if (valor > 100) { valido = false; mensagem = 'O desconto percentual não pode ultrapassar 100%.'; }
-    descontoDesejado = subtotalBase * valor / 100;
-  } else if (modo === 'discount_value') {
-    if (valor > subtotalBase + 0.001) { valido = false; mensagem = 'O desconto em reais não pode ser maior que o subtotal.'; }
-    descontoDesejado = Math.min(valor, subtotalBase);
-  } else if (modo === 'increase_percent') {
-    acrescimoDesejado = subtotalBase * valor / 100;
-  } else if (modo === 'increase_value') {
-    if (subtotalBase <= 0 && valor > 0) { valido = false; mensagem = 'Não é possível distribuir um acréscimo em reais entre itens sem preço.'; }
-    acrescimoDesejado = valor;
-  }
-  const alvo = Math.max(0, subtotalBase - descontoDesejado + acrescimoDesejado);
-  const fator = subtotalBase > 0 ? alvo / subtotalBase : 1;
   const itens = lines.map(l => {
-    const precoFinal = centavos(Math.max(0, Number(l.price || 0) * fator));
+    const base = centavos(l.base_price ?? l.price ?? 0);
+    const preco = centavos(l.price ?? 0);
     return {
       ...l,
-      base_price: centavos(l.price),
-      price: precoFinal,
-      discount_per_unit: centavos(Math.max(0, Number(l.price || 0) - precoFinal)),
-      surcharge_per_unit: centavos(Math.max(0, precoFinal - Number(l.price || 0))),
-      adjustment_type: modo,
-      adjustment_value: valor
+      base_price: base,
+      price: preco,
+      discount_per_unit: centavos(l.discount_per_unit ?? Math.max(0, base - preco)),
+      surcharge_per_unit: centavos(l.surcharge_per_unit ?? Math.max(0, preco - base))
     };
   });
-  const totalFinal = centavos(itens.reduce((t, l) => t + l.price * l.qty, 0));
-  const descontoTotal = centavos(Math.max(0, subtotalBase - totalFinal));
-  const acrescimoTotal = centavos(Math.max(0, totalFinal - subtotalBase));
-  const custoTotal = centavos(lines.reduce((t, l) => t + custoEstimado(l) * Number(l.qty || 0), 0));
+  const subtotalBase = centavos(itens.reduce((t, l) => t + l.base_price * Number(l.qty || 0), 0));
+  const totalFinal = centavos(itens.reduce((t, l) => t + l.price * Number(l.qty || 0), 0));
+  const descontoTotal = centavos(itens.reduce((t, l) => t + l.discount_per_unit * Number(l.qty || 0), 0));
+  const acrescimoTotal = centavos(itens.reduce((t, l) => t + l.surcharge_per_unit * Number(l.qty || 0), 0));
+  const custoTotal = centavos(itens.reduce((t, l) => t + custoEstimado(l) * Number(l.qty || 0), 0));
   const margem = centavos(totalFinal - custoTotal);
   const margemPct = totalFinal > 0 ? margem / totalFinal * 100 : 0;
-  const temAjuste = modo !== 'none' && valor > 0 && (descontoTotal > 0 || acrescimoTotal > 0);
-  return { modo, valor, subtotalBase, itens, totalFinal, descontoTotal, acrescimoTotal, custoTotal, margem, margemPct, valido, mensagem, temAjuste };
+  const temAjuste = descontoTotal > 0 || acrescimoTotal > 0;
+  return { modo: 'per_item', valor: centavos(descontoTotal + acrescimoTotal), subtotalBase, itens, totalFinal, descontoTotal, acrescimoTotal, custoTotal, margem, margemPct, valido: true, mensagem: '', temAjuste };
 }
 function renderLines() {
   const calc = calcularAjusteVenda();
-  $('lines').innerHTML = calc.itens.map((l, i) => `<tr>
-    <td>${esc(l.name)} <span class="muted">(${typeLabel(l.type)})</span></td><td class="num">${l.qty}</td>
-    <td class="num">${money(l.base_price)}</td><td class="num">${money(l.price)}</td><td class="num">${money(l.price * l.qty)}</td>
-    <td class="num"><button class="btn ghost small" onclick="lines.splice(${i},1);renderLines()">Remover</button></td></tr>`).join('')
-    || '<tr><td colspan="6" class="muted">Nenhum item adicionado.</td></tr>';
+  $('lines').innerHTML = calc.itens.map((l, i) => {
+    const ajuste = l.discount_per_unit > 0 ? `− ${money(l.discount_per_unit)}` : l.surcharge_per_unit > 0 ? `+ ${money(l.surcharge_per_unit)}` : '—';
+    return `<tr>
+      <td>${esc(l.name)} <span class="muted">(${typeLabel(l.type)})</span></td><td class="num">${l.qty}</td>
+      <td class="num">${money(l.base_price)}</td><td class="num">${ajuste}</td><td class="num">${money(l.price)}</td><td class="num">${money(l.price * l.qty)}</td>
+      <td class="num"><button class="btn ghost small" onclick="lines.splice(${i},1);renderLines()">Remover</button></td></tr>`;
+  }).join('') || '<tr><td colspan="7" class="muted">Nenhum item adicionado.</td></tr>';
   $('saleTotal').textContent = money(calc.totalFinal);
-  if ($('sAdjPreview')) {
-    $('sAdjPreview').innerHTML = `<div><span>Total após ajuste</span><b>${money(calc.totalFinal)}</b></div>
-      <div><span>Nova margem estimada</span><b>${money(calc.margem)}</b></div>
-      <div><span>Margem sobre a venda</span><b>${calc.margemPct.toFixed(1).replace('.', ',')}%</b></div>`;
-    $('sAdjHint').textContent = calc.mensagem || (calc.temAjuste
-      ? `${calc.descontoTotal > 0 ? 'Desconto aplicado: ' + money(calc.descontoTotal) : 'Acréscimo aplicado: ' + money(calc.acrescimoTotal)}. Subtotal original: ${money(calc.subtotalBase)}. Margem estimada considera o custo cadastrado dos produtos.`
-      : `Subtotal sem ajuste: ${money(calc.subtotalBase)}. A margem é estimada com base no custo cadastrado dos produtos.`);
-    $('sAdjHint').style.color = calc.valido ? 'var(--ok)' : '#c92a2a';
-  }
+  $('saleSummary').innerHTML = `<div><span>Subtotal tabela</span><b>${money(calc.subtotalBase)}</b></div>
+    <div><span>Descontos nos itens</span><b>${money(calc.descontoTotal)}</b></div>
+    <div><span>Acréscimos nos itens</span><b>${money(calc.acrescimoTotal)}</b></div>
+    <div><span>Lucro estimado</span><b>${money(calc.margem)}</b></div>`;
+  $('saleAdjustHint').textContent = calc.temAjuste
+    ? `Ajustes por item: ${calc.descontoTotal > 0 ? 'descontos de ' + money(calc.descontoTotal) : ''}${calc.descontoTotal > 0 && calc.acrescimoTotal > 0 ? ' e ' : ''}${calc.acrescimoTotal > 0 ? 'acréscimos de ' + money(calc.acrescimoTotal) : ''}. A margem estimada considera o custo cadastrado dos produtos.`
+    : 'Nenhum desconto ou acréscimo aplicado. A margem é estimada com base no custo cadastrado dos produtos.';
 }
-$('sAdjMode').addEventListener('change', () => {
-  $('sAdjValue').disabled = $('sAdjMode').value === 'none';
-  renderLines();
-});
-$('sAdjValue').addEventListener('input', renderLines);
-$('sAdjMode').value = 'none'; $('sAdjValue').disabled = true;
 async function salvarVenda(imprimir) {
   if (!lines.length) { $('sMsg').textContent = 'Adicione pelo menos um item.'; return; }
   if (!quick && $('sPay').value === 'Fiado' && !$('sClient').value) { $('sMsg').textContent = 'Escolha um cliente cadastrado para vender no fiado.'; return; }
   const calc = calcularAjusteVenda();
-  if (!calc.valido) { $('sMsg').textContent = calc.mensagem; return; }
   $('sMsg').textContent = '';
   document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = true);
   let data = null, error = null;
@@ -1106,13 +1172,13 @@ async function salvarVenda(imprimir) {
         p_base_total: calc.subtotalBase,
         p_discount_total: calc.descontoTotal,
         p_surcharge_total: calc.acrescimoTotal,
-        p_adjustment_type: calc.modo,
+        p_adjustment_type: 'per_item',
         p_adjustment_value: calc.valor
       });
       if (meta.error) {
         const rollback = await db.rpc('cancel_sale', { p_id: data.id });
         if (rollback.error) throw new Error(`A venda foi criada, mas não foi possível registrar os dados do ajuste nem cancelar automaticamente. Venda nº ${data.numero}. Erro: ${meta.error.message}. Cancele a venda manualmente. ${rollback.error.message}`);
-        throw new Error(`O ajuste não pôde ser gravado na base de dados. A venda nº ${data.numero} foi cancelada e o estoque restaurado. Aplique a migração SQL fornecida e tente novamente. ${meta.error.message}`);
+        throw new Error(`O ajuste por item não pôde ser gravado na base de dados. A venda nº ${data.numero} foi cancelada e o estoque restaurado. Execute a versão atualizada da migração SQL e tente novamente. ${meta.error.message}`);
       }
     }
   } catch (e) {
@@ -1123,7 +1189,6 @@ async function salvarVenda(imprimir) {
   document.querySelectorAll('#saveSalePrint,#saveSaleQuick').forEach(b => b.disabled = false);
   if (calc.temAjuste) { data.discount_total = calc.descontoTotal; data.surcharge_total = calc.acrescimoTotal; data.base_total = calc.subtotalBase; }
   lines = [];
-  $('sAdjMode').value = 'none'; $('sAdjValue').value = '0'; $('sAdjValue').disabled = true;
   if (!$('sKeep').checked) { ['sCustomer', 'sMoto', 'sPlate', 'sKm'].forEach(i => $(i).value = ''); limparPicker('s'); }
   renderLines(); loadAll();
   if (imprimir) printReceipt(data);
@@ -1136,7 +1201,13 @@ $('saveSaleQuick').onclick = () => salvarVenda(false);
 /* ---------- nota para impressão (página inteira) ---------- */
 function printReceipt(s) {
   const balcao = s.customer === BALCAO_NOME;
-  const itens = s.items.map(i => `<tr><td>${esc(i.name)}</td><td class="n">${i.qty}</td><td class="n">${money(i.price)}</td><td class="n">${money(i.price * i.qty)}</td></tr>`).join('');
+  const itens = s.items.map(i => {
+    const base = Number(i.base_price ?? i.price ?? 0);
+    const desconto = Number(i.discount_per_unit || 0) * Number(i.qty || 0);
+    const acrescimo = Number(i.surcharge_per_unit || 0) * Number(i.qty || 0);
+    const ajuste = desconto > 0 ? `−${money(desconto)}` : acrescimo > 0 ? `+${money(acrescimo)}` : '—';
+    return `<tr><td>${esc(i.name)}</td><td class="n">${i.qty}</td><td class="n">${money(base)}</td><td class="n">${ajuste}</td><td class="n">${money(i.price)}</td><td class="n">${money(i.price * i.qty)}</td></tr>`;
+  }).join('');
   const nome = `<div class="nome">${esc(NOTA_NOME)}</div>`, nomeFb = `<div class=nome>${esc(NOTA_NOME)}</div>`;
   const logo = NOTA_LOGO
     ? `<img class="logo" src="${esc(new URL(NOTA_LOGO, location.href).href)}" alt="" onerror="this.outerHTML='${nomeFb}'">` : nome;
@@ -1179,7 +1250,7 @@ function printReceipt(s) {
       <div><span>Placa</span>${esc(s.plate) || '-'}</div>
       <div><span>Quilometragem</span>${s.km ? Number(s.km).toLocaleString('pt-BR') + ' km' : '-'}</div>
     </div>`}
-    <table><thead><tr><th>Descrição</th><th class="n">Qtd.</th><th class="n">Valor unit.</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table>
+    <table><thead><tr><th>Descrição</th><th class="n">Qtd.</th><th class="n">Preço tabela/un.</th><th class="n">Ajuste total</th><th class="n">Preço final/un.</th><th class="n">Subtotal</th></tr></thead><tbody>${itens}</tbody></table>
     <div class="grow"></div>
     ${Number(s.discount_total) > 0 ? `<div style="text-align:right;margin-top:10px">Desconto: -${money(s.discount_total)}</div>` : ''}
     ${Number(s.surcharge_total) > 0 ? `<div style="text-align:right;margin-top:10px">Acréscimo: +${money(s.surcharge_total)}</div>` : ''}
