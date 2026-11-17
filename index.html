@@ -213,7 +213,6 @@
       <div class="card">
         <h2>Adicionar item</h2>
         <div class="row">
-          <label style="flex:2">Buscar por código ou nome <input id="iQ" autocomplete="off" placeholder="ex.: P0012 ou óleo"></label>
           <label>Tipo
             <select id="iType"><option value="product">Produto</option><option value="service">Serviço</option></select>
           </label>
@@ -986,7 +985,7 @@ $('toggleWithdrawalPanel').onclick = async () => {
   }
 };
 
-const casaItem = x => { const q = $('iQ').value.trim().toLowerCase(); return !q || (x.code || '').toLowerCase().includes(q) || x.name.toLowerCase().includes(q); };
+const casaItem = () => true;
 function fillItemSelect() {
   const isProd = $('iType').value === 'product';
   $('iItem').innerHTML = (isProd ? products : services).filter(casaItem).map(x => `<option value="${x.id}">${x.code ? esc(x.code) + ' - ' : ''}${esc(x.name)}</option>`).join('');
@@ -1049,13 +1048,6 @@ $('iPrice').addEventListener('input', renderPricePreview);
 $('iQty').addEventListener('input', renderPricePreview);
 $('iType').onchange = fillItemSelect;
 $('iItem').onchange = onItemChange;
-$('iQ').addEventListener('input', () => {
-  const prod = $('iType').value === 'product', cur = prod ? products : services, outra = prod ? services : products;
-  if ($('iQ').value.trim() && !cur.some(casaItem) && outra.some(casaItem)) $('iType').value = prod ? 'service' : 'product';
-  fillItemSelect();
-});
-$('iQ').addEventListener('keydown', e => { if (e.key === 'Enter') $('addLine').click(); });
-
 $('addLine').onclick = () => {
   const isProd = $('iType').value === 'product';
   const item = (isProd ? products : services).find(x => x.id == $('iItem').value);
@@ -1072,8 +1064,8 @@ $('addLine').onclick = () => {
     discount_per_unit: centavos(Math.max(0, diferencaTabela)),
     surcharge_per_unit: centavos(Math.max(0, -diferencaTabela))
   });
-  $('iQty').value = 1; $('iQ').value = '';
-  fillItemSelect(); renderLines(); $('iQ').focus();
+  $('iQty').value = 1;
+  fillItemSelect(); renderLines();
 };
 function centavos(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
 function custoEstimado(l) {
