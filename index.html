@@ -274,7 +274,7 @@
           <label>De <input id="hFrom" type="date"></label>
           <label>Até <input id="hTo" type="date"></label>
           <label>Tipo <select id="hType"><option value="">Todas</option><option value="oficina">Oficina</option><option value="balcao">Balcão</option></select></label>
-          <label>Situação <select id="hSt"><option value="">Todas</option><option value="ativa">Ativas</option><option value="cancelada">Canceladas</option></select></label>
+          <label>Situação <select id="hSt" disabled><option value="ativa" selected>Somente vendas válidas</option></select></label>
         </div>
         <div class="muted" id="hSummary" style="margin-top:10px"></div>
         <div class="overflow"><table>
@@ -586,6 +586,8 @@ const hora = d => new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', min
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const erro = e => { const m = e.message || String(e); alert(/duplicate key/.test(m) ? 'Já existe um item com esse código.' : m); };
 const faltaDe = d => Number(d.total) - Number(d.paid);
+// Somente vendas com status ativa são válidas para registro e indicadores.
+const vendaValida = s => String(s?.status ?? '').trim().toLowerCase() === 'ativa';
 
 let me = { email: '', role: 'funcionario' };
 let products = [], services = [], lines = [], salesCache = [], clientsAll = [], clients = [], debts = [];
@@ -1331,7 +1333,7 @@ function descontoTotalVenda(s) {
 }
 async function loadHistory() {
   const [vendas, cadastroProdutos, cadastroServicos] = await Promise.all([
-    db.from('sales').select('*').order('created_at', { ascending: false }).limit(1000),
+    db.from('sales').select('*').eq('status', 'ativa').order('created_at', { ascending: false }).limit(1000),
     db.from('products').select('id,active'),
     db.from('services').select('id,active')
   ]);
@@ -1345,22 +1347,14 @@ async function loadHistory() {
 ['hQ', 'hFrom', 'hTo', 'hSt', 'hType'].forEach(id => $(id).addEventListener('input', renderHistory));
 function renderHistory() {
   const q = $('hQ').value.toLowerCase(), a = $('hFrom').value, b = $('hTo').value, st = $('hSt').value, ty = $('hType').value;
-  const itensVisiveis = s => (Array.isArray(s.items) ? s.items : []).filter(itemEstaAtivo);
-  const vendaArquivada = s =>
-    s.archived === true || s.active === false ||
-    s.status === 'arquivada' || s.status === 'archived';
+  const itensVisiveis = s => (s.items || []).filter(itemEstaAtivo);
   const rows = ordenar('h', salesCache.filter(s => {
-    // Não listar vendas explicitamente arquivadas nem vendas compostas
-    // exclusivamente por produtos/serviços que já foram arquivados.
-    if (vendaArquivada(s)) return false;
-    const itens = Array.isArray(s.items) ? s.items : [];
-    const visiveis = itensVisiveis(s);
-    if (itens.length > 0 && visiveis.length === 0) return false;
+    if (!vendaValida(s)) return false;
     const d = new Date(s.created_at).toLocaleDateString('sv-SE');
-    const txt = [s.numero, s.customer, s.motorcycle, s.plate, visiveis.map(i => i.name).join(' ')].join(' ').toLowerCase();
-    return (!q || txt.includes(q)) && (!a || d >= a) && (!b || d <= b) && (!st || s.status === st) && (!ty || (ty === 'balcao') === (s.customer === BALCAO_NOME));
+    const txt = [s.numero, s.customer, s.motorcycle, s.plate, itensVisiveis(s).map(i => i.name).join(' ')].join(' ').toLowerCase();
+    return (!q || txt.includes(q)) && (!a || d >= a) && (!b || d <= b) && (!ty || (ty === 'balcao') === (s.customer === BALCAO_NOME));
   }));
-  const ativas = rows.filter(s => s.status === 'ativa');
+  const ativas = rows;
   const total = ativas.reduce((t, s) => t + Number(s.total), 0);
   const lucro = ativas.reduce((t, s) => t + (s.items || []).filter(itemEstaAtivo).reduce((u, i) => u + (i.price - (i.paid || 0)) * i.qty, 0), 0);
   $('hSummary').textContent = `${ativas.length} vendas ativas, ${money(total)} faturado, lucro estimado dos itens ativos ${money(lucro)}.`;
@@ -1512,6 +1506,8 @@ function preencher(id, ops, atual) {
 }
 async function loadAnalise() {
   try { vendasAn = await todas('sales'); prodAn = await todas('products'); servAn = await todas('services'); } catch (e) { return erro(e); }
+  // Daqui em diante, todas as análises e listas de períodos usam somente vendas válidas.
+  vendasAn = vendasAn.filter(vendaValida);
   archivedProductIds = new Set(prodAn.filter(p => p.active !== true).map(p => String(p.id)));
   archivedServiceIds = new Set(servAn.filter(x => x.active !== true).map(x => String(x.id)));
   const produtosAtivos = prodAn.filter(p => p.active === true), servicosAtivos = servAn.filter(x => x.active === true);
@@ -1537,7 +1533,7 @@ $('anChips').addEventListener('change', () => {
 function renderAnalise() {
   const f = { ano: $('anAno').value, mes: $('anMes').value, cat: $('anCat').value, item: $('anItem').value, tipo: $('anTipo').value };
   const vendas = vendasAn.filter(s => {
-    if (s.status !== 'ativa') return false;
+    if (!vendaValida(s)) return false;
     const d = new Date(s.created_at);
     return (!f.ano || d.getFullYear() == f.ano) && (!f.mes || d.getMonth() + 1 == f.mes) && (!f.tipo || (f.tipo === 'balcao') === (s.customer === BALCAO_NOME));
   });
@@ -1638,7 +1634,7 @@ $('anModoE').onclick = () => setModoAn(true);
 $('esPer').addEventListener('change', renderEstoque);
 
 function renderEstoque() {
-  const DIA = 864e5, agora = Date.now(), ativas = vendasAn.filter(s => s.status === 'ativa');
+  const DIA = 864e5, agora = Date.now(), ativas = vendasAn.filter(vendaValida);
   let dias = parseInt($('esPer').value);
   if (!dias) { const ini = Math.min(...ativas.map(s => +new Date(s.created_at))); dias = Number.isFinite(ini) ? Math.max(1, Math.ceil((agora - ini) / DIA)) : 1; }
   const corte = agora - dias * DIA, vend = {};
