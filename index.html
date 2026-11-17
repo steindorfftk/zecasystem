@@ -590,7 +590,7 @@ const faltaDe = d => Number(d.total) - Number(d.paid);
 let me = { email: '', role: 'funcionario' };
 let products = [], services = [], lines = [], salesCache = [], clientsAll = [], clients = [], debts = [];
 let comprasCache = [], withdrawalsCache = [], usersCache = [], auditCache = [], hojeCount = 0;
-let archivedProductIds = new Set();
+let archivedProductIds = new Set(), archivedServiceIds = new Set();
 const isAdmin = () => me.role === 'admin';
 
 document.addEventListener('input', e => {
@@ -1285,20 +1285,67 @@ $('addAg').onclick = async () => {
 };
 
 /* ---------- registro de vendas ---------- */
+function itemEstaAtivo(i) {
+  if (!i || i.active === false || i.archived === true) return false;
+  const tipo = String(i.type || '').toLowerCase();
+  if (tipo === 'product') return !archivedProductIds.has(String(i.id));
+  if (tipo === 'service') return !archivedServiceIds.has(String(i.id));
+  return true;
+}
+function descontosPorItemDaVenda(s) {
+  const itens = Array.isArray(s?.items) ? s.items : [];
+  const dados = itens.map(i => {
+    const preco = centavos(Number(i.price) || 0);
+    const qtd = Math.max(0, Number(i.qty) || 0);
+    const descontoInformado = centavos(Math.max(0, Number(i.discount_per_unit) || 0));
+    const descontoPeloPrecoBase = i.base_price !== undefined && i.base_price !== null
+      ? centavos(Math.max(0, (Number(i.base_price) || 0) - preco)) : 0;
+    const descontoExplicito = Math.max(descontoInformado, descontoPeloPrecoBase);
+    const baseUnit = centavos(Math.max(preco + descontoInformado, Number(i.base_price ?? (preco + descontoExplicito)) || 0));
+    return { unit: descontoExplicito, total: centavos(descontoExplicito * qtd), qty: qtd, baseUnit, peso: centavos(baseUnit * qtd) };
+  });
+  const explicito = centavos(dados.reduce((t, x) => t + x.total, 0));
+  const informado = centavos(Math.max(0, Number(s?.discount_total) || 0));
+  const restante = centavos(Math.max(0, informado - explicito));
+  const pesoTotal = dados.reduce((t, x) => t + x.peso, 0);
+  if (restante > 0 && pesoTotal > 0) {
+    let alocado = 0;
+    dados.forEach((x, idx) => {
+      const parte = idx === dados.length - 1
+        ? centavos(restante - alocado)
+        : centavos(restante * x.peso / pesoTotal);
+      x.total = centavos(x.total + parte);
+      x.unit = x.qty > 0 ? centavos(x.total / x.qty) : 0;
+      alocado = centavos(alocado + parte);
+    });
+  }
+  return dados.map((x, idx) => ({
+    ...x,
+    percentual: x.baseUnit > 0 ? x.unit / x.baseUnit * 100 : 0
+  }));
+}
+function descontoTotalVenda(s) {
+  const informado = centavos(Math.max(0, Number(s?.discount_total) || 0));
+  const porItem = centavos(descontosPorItemDaVenda(s).reduce((t, x) => t + x.total, 0));
+  return Math.max(informado, porItem);
+}
 async function loadHistory() {
-  const [vendas, cadastroProdutos] = await Promise.all([
+  const [vendas, cadastroProdutos, cadastroServicos] = await Promise.all([
     db.from('sales').select('*').order('created_at', { ascending: false }).limit(1000),
-    db.from('products').select('id,active')
+    db.from('products').select('id,active'),
+    db.from('services').select('id,active')
   ]);
   if (vendas.error) return erro(vendas.error);
   if (cadastroProdutos.error) return erro(cadastroProdutos.error);
-  archivedProductIds = new Set((cadastroProdutos.data || []).filter(p => p.active === false).map(p => String(p.id)));
+  if (cadastroServicos.error) return erro(cadastroServicos.error);
+  archivedProductIds = new Set((cadastroProdutos.data || []).filter(p => p.active !== true).map(p => String(p.id)));
+  archivedServiceIds = new Set((cadastroServicos.data || []).filter(x => x.active !== true).map(x => String(x.id)));
   salesCache = vendas.data; renderHistory();
 }
 ['hQ', 'hFrom', 'hTo', 'hSt', 'hType'].forEach(id => $(id).addEventListener('input', renderHistory));
 function renderHistory() {
   const q = $('hQ').value.toLowerCase(), a = $('hFrom').value, b = $('hTo').value, st = $('hSt').value, ty = $('hType').value;
-  const itensVisiveis = s => (s.items || []).filter(i => !(i.type === 'product' && archivedProductIds.has(String(i.id))));
+  const itensVisiveis = s => (s.items || []).filter(itemEstaAtivo);
   const rows = ordenar('h', salesCache.filter(s => {
     const d = new Date(s.created_at).toLocaleDateString('sv-SE');
     const txt = [s.numero, s.customer, s.motorcycle, s.plate, itensVisiveis(s).map(i => i.name).join(' ')].join(' ').toLowerCase();
@@ -1306,18 +1353,31 @@ function renderHistory() {
   }));
   const ativas = rows.filter(s => s.status === 'ativa');
   const total = ativas.reduce((t, s) => t + Number(s.total), 0);
-  const lucro = ativas.reduce((t, s) => t + s.items.reduce((u, i) => u + (i.price - (i.paid || 0)) * i.qty, 0), 0);
-  $('hSummary').textContent = `${ativas.length} vendas ativas, ${money(total)} faturado, lucro estimado ${money(lucro)}.`;
-  $('hBody').innerHTML = rows.map(s => `<tr class="${s.status === 'cancelada' ? 'canceled' : ''}">
-    <td>${s.numero}</td><td>${fmtData(s.created_at)}</td><td>${esc(s.customer)}</td>
-    <td>${esc(s.motorcycle)}${s.plate ? ' · ' + esc(s.plate) : ''}${s.km ? ' · ' + s.km + ' km' : ''}</td>
-    <td>${esc(s.payment)}${s.payment === 'Fiado' && s.total - s.paid > 0.004 ? ` (falta ${money(s.total - s.paid)})` : ''}</td>
-    <td>${itensVisiveis(s).map(i => `${esc(i.name)} x${i.qty}`).join(', ') || ((s.items || []).length ? '<span class="muted">Itens arquivados ocultados</span>' : '-')}</td>
-    <td class="num">${money(s.total)}${Number(s.discount_total) > 0 ? `<div class="muted" style="font-size:11px">Desconto: ${money(s.discount_total)}</div>` : ''}${Number(s.surcharge_total) > 0 ? `<div class="muted" style="font-size:11px">Acréscimo: ${money(s.surcharge_total)}</div>` : ''}</td>
-    <td class="num"><button class="btn ghost small" onclick="printReceipt(salesCache.find(x => x.id === ${s.id}))">Imprimir</button>
-      ${s.status === 'ativa' ? `<button class="btn ghost small" onclick="cancelar(${s.id})">Cancelar</button>` : ''}</td></tr>`).join('')
-    || '<tr><td colspan="8" class="muted">Nenhuma venda encontrada.</td></tr>';
+  const lucro = ativas.reduce((t, s) => t + (s.items || []).filter(itemEstaAtivo).reduce((u, i) => u + (i.price - (i.paid || 0)) * i.qty, 0), 0);
+  $('hSummary').textContent = `${ativas.length} vendas ativas, ${money(total)} faturado, lucro estimado dos itens ativos ${money(lucro)}.`;
+  $('hBody').innerHTML = rows.map(s => {
+    const visiveis = itensVisiveis(s);
+    const descontos = descontosPorItemDaVenda(s);
+    const itensHtml = visiveis.map(i => {
+      const idx = (s.items || []).indexOf(i), d = descontos[idx];
+      const detalhe = d && d.total > 0.004
+        ? `<div class="muted" style="font-size:11px">Desconto: ${money(d.total)} na linha (${money(d.unit)}/un.; ${d.percentual.toFixed(1).replace('.', ',')}%)</div>` : '';
+      return `<div>${esc(i.name)} x${i.qty}${detalhe}</div>`;
+    }).join('') || '-';
+    const desconto = descontoTotalVenda(s);
+    const base = Number(s.base_total) > 0 ? Number(s.base_total) : (Number(s.total) + desconto - Number(s.surcharge_total || 0));
+    const descontoPct = base > 0 ? ` (${(desconto / base * 100).toFixed(1).replace('.', ',')}%)` : '';
+    return `<tr class="${s.status === 'cancelada' ? 'canceled' : ''}">
+      <td>${s.numero}</td><td>${fmtData(s.created_at)}</td><td>${esc(s.customer)}</td>
+      <td>${esc(s.motorcycle)}${s.plate ? ' · ' + esc(s.plate) : ''}${s.km ? ' · ' + s.km + ' km' : ''}</td>
+      <td>${esc(s.payment)}${s.payment === 'Fiado' && s.total - s.paid > 0.004 ? ` (falta ${money(s.total - s.paid)})` : ''}</td>
+      <td>${itensHtml}</td>
+      <td class="num">${money(s.total)}${desconto > 0.004 ? `<div class="muted" style="font-size:11px">Desconto total: ${money(desconto)}${descontoPct}</div>` : ''}${Number(s.surcharge_total) > 0 ? `<div class="muted" style="font-size:11px">Acréscimo: ${money(s.surcharge_total)}</div>` : ''}</td>
+      <td class="num"><button class="btn ghost small" onclick="printReceipt(salesCache.find(x => x.id === ${s.id}))">Imprimir</button>
+        ${s.status === 'ativa' ? `<button class="btn ghost small" onclick="cancelar(${s.id})">Cancelar</button>` : ''}</td></tr>`;
+  }).join('') || '<tr><td colspan="8" class="muted">Nenhuma venda encontrada.</td></tr>';
 }
+
 RENDER.h = renderHistory;
 async function cancelar(id) {
   if (!confirm('Cancelar esta venda? Os produtos voltam para o estoque.')) return;
@@ -1427,13 +1487,15 @@ function editarDivida(id) {
 /* ---------- análises ---------- */
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const GRAFICOS = {
-  tempo: 'Faturamento e lucro no período', top: 'Mais vendidos (quantidade)', categoria: 'Faturamento e lucro por categoria', lucro: 'Ranking de lucro por categoria',
+  tempo: 'Faturamento e lucro no período', descontos: 'Descontos concedidos ao longo do tempo',
+  top: 'Mais vendidos (quantidade)', categoria: 'Faturamento e lucro por categoria', lucro: 'Ranking de lucro por categoria',
   pagamento: 'Faturamento e lucro por forma de pagamento', tipo: 'Faturamento e lucro: oficina x balcão', faixa: 'Clientes por faixa etária', sexo: 'Clientes por sexo'
 };
 const PAL = ['#d9480f', '#1b2430', '#2b8a3e', '#1c7ed6', '#f08c00', '#7048e8', '#c2255c', '#0c8599', '#66717f', '#a9e34b'];
-let vendasAn = [], prodAn = [], servAn = [], charts = {}, graficosOn = ['tempo', 'top', 'categoria', 'pagamento'];
+let vendasAn = [], prodAn = [], servAn = [], charts = {}, graficosOn = ['tempo', 'descontos', 'top', 'categoria', 'pagamento'];
 try { graficosOn = JSON.parse(localStorage.getItem('graficos')) || graficosOn; } catch {}
-const catDe = i => (i.type === 'product' ? prodAn : servAn).find(x => x.id === i.id)?.category || (i.type === 'product' ? 'Sem categoria' : 'Serviços');
+if (Array.isArray(graficosOn) && !graficosOn.includes('descontos')) graficosOn.push('descontos');
+const catDe = i => { const produto = String(i.type || '').toLowerCase() === 'product'; return (produto ? prodAn : servAn).find(x => String(x.id) === String(i.id))?.category || (produto ? 'Sem categoria' : 'Serviços'); };
 function preencher(id, ops, atual) {
   const el = $(id);
   el.innerHTML = ops.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
@@ -1441,12 +1503,15 @@ function preencher(id, ops, atual) {
 }
 async function loadAnalise() {
   try { vendasAn = await todas('sales'); prodAn = await todas('products'); servAn = await todas('services'); } catch (e) { return erro(e); }
+  archivedProductIds = new Set(prodAn.filter(p => p.active !== true).map(p => String(p.id)));
+  archivedServiceIds = new Set(servAn.filter(x => x.active !== true).map(x => String(x.id)));
+  const produtosAtivos = prodAn.filter(p => p.active === true), servicosAtivos = servAn.filter(x => x.active === true);
   const anos = [...new Set(vendasAn.map(s => new Date(s.created_at).getFullYear()))].sort((a, b) => b - a);
   preencher('anAno', [['', 'Todos'], ...anos.map(a => [String(a), String(a)])], $('anAno').options.length ? $('anAno').value : String(new Date().getFullYear()));
   preencher('anMes', [['', 'Todos'], ...MESES.map((m, i) => [String(i + 1), m])], $('anMes').value);
-  const cats = [...new Set([...prodAn.map(p => p.category || 'Sem categoria'), ...servAn.map(x => x.category || 'Serviços')])].sort();
+  const cats = [...new Set([...produtosAtivos.map(p => p.category || 'Sem categoria'), ...servicosAtivos.map(x => x.category || 'Serviços')])].sort();
   preencher('anCat', [['', 'Todas'], ...cats.map(c => [c, c])], $('anCat').value);
-  const nomes = [...new Set([...prodAn, ...servAn].map(x => x.name))].sort();
+  const nomes = [...new Set([...produtosAtivos, ...servicosAtivos].map(x => x.name))].sort();
   preencher('anItem', [['', 'Todos'], ...nomes.map(n => [n, n])], $('anItem').value);
   $('anChips').innerHTML = '<span class="muted">Gráficos:</span>' + Object.entries(GRAFICOS).map(([k, t]) =>
     `<label class="chip"><input type="checkbox" data-g="${k}" ${graficosOn.includes(k) ? 'checked' : ''}> ${t}</label>`).join('');
@@ -1468,11 +1533,15 @@ function renderAnalise() {
     return (!f.ano || d.getFullYear() == f.ano) && (!f.mes || d.getMonth() + 1 == f.mes) && (!f.tipo || (f.tipo === 'balcao') === (s.customer === BALCAO_NOME));
   });
   const L = [];
-  vendas.forEach(s => s.items.forEach(i => {
-    const cat = catDe(i);
-    if ((!f.cat || cat === f.cat) && (!f.item || i.name === f.item))
-      L.push({ s, i, cat, rec: i.price * i.qty, luc: (i.price - (i.paid || 0)) * i.qty, d: new Date(s.created_at) });
-  }));
+  vendas.forEach(s => {
+    const descontosItens = descontosPorItemDaVenda(s);
+    (s.items || []).forEach((i, idx) => {
+      if (!itemEstaAtivo(i)) return;
+      const cat = catDe(i), desconto = descontosItens[idx]?.total || 0;
+      if ((!f.cat || cat === f.cat) && (!f.item || i.name === f.item))
+        L.push({ s, i, cat, rec: i.price * i.qty, luc: (i.price - (i.paid || 0)) * i.qty, desconto, d: new Date(s.created_at) });
+    });
+  });
   const fat = L.reduce((t, l) => t + l.rec, 0), luc = L.reduce((t, l) => t + l.luc, 0), n = new Set(L.map(l => l.s.id)).size;
   $('anKpis').innerHTML = [['Faturamento', money(fat)], ['Lucro estimado', money(luc)], ['Vendas', n], ['Ticket médio', money(n ? fat / n : 0)]]
     .map(([t, v]) => `<div class="kpi"><span>${t}</span><b>${v}</b></div>`).join('');
@@ -1509,6 +1578,21 @@ function renderAnalise() {
     L.forEach(l => { const k = chave(l); const v = m[k] = m[k] || { rec: 0, luc: 0 }; v.rec += l.rec; v.luc += l.luc; });
     return m;
   };
+  const somarDescontos = chave => {
+    const m = {};
+    L.forEach(l => { const k = chave(l); m[k] = (m[k] || 0) + l.desconto; });
+    return m;
+  };
+  if (f.mes) {
+    const dias = new Date(f.ano || new Date().getFullYear(), f.mes, 0).getDate(), m = somarDescontos(l => l.d.getDate());
+    desenhar('descontos', 'bar', Array.from({ length: dias }, (_, k) => [String(k + 1), m[k + 1] || 0]), 'Descontos concedidos (R$)');
+  } else if (f.ano) {
+    const m = somarDescontos(l => l.d.getMonth());
+    desenhar('descontos', 'bar', MESES.map((nome, k) => [nome, m[k] || 0]), 'Descontos concedidos (R$)');
+  } else {
+    const m = somarDescontos(l => `${l.d.getFullYear()}-${String(l.d.getMonth() + 1).padStart(2, '0')}`);
+    desenhar('descontos', 'bar', Object.entries(m).sort().map(([k, v]) => [k, v]), 'Descontos concedidos (R$)');
+  }
   if (f.mes) {
     const dias = new Date(f.ano || new Date().getFullYear(), f.mes, 0).getDate(), m = somarFinanceiro(l => l.d.getDate());
     desenharFinanceiro('tempo', Array.from({ length: dias }, (_, k) => [String(k + 1), m[k + 1]?.rec || 0, m[k + 1]?.luc || 0]));
@@ -1549,12 +1633,12 @@ function renderEstoque() {
   let dias = parseInt($('esPer').value);
   if (!dias) { const ini = Math.min(...ativas.map(s => +new Date(s.created_at))); dias = Number.isFinite(ini) ? Math.max(1, Math.ceil((agora - ini) / DIA)) : 1; }
   const corte = agora - dias * DIA, vend = {};
-  ativas.filter(s => +new Date(s.created_at) >= corte).forEach(s => s.items.forEach(i => {
-    if (i.type !== 'product') return;
-    const p = prodAn.find(x => x.id === i.id), v = vend[i.id] = vend[i.id] || { q: 0, rec: 0, luc: 0 };
+  ativas.filter(s => +new Date(s.created_at) >= corte).forEach(s => (s.items || []).forEach(i => {
+    if (i.type !== 'product' || !itemEstaAtivo(i)) return;
+    const p = prodAn.find(x => String(x.id) === String(i.id)), v = vend[i.id] = vend[i.id] || { q: 0, rec: 0, luc: 0 };
     v.q += i.qty; v.rec += i.price * i.qty; v.luc += (i.price - (i.paid ?? (p ? p.cost_price : 0))) * i.qty;
   }));
-  const L = prodAn.filter(p => p.active || vend[p.id]).map(p => {
+  const L = prodAn.filter(p => p.active === true).map(p => {
     const v = vend[p.id] || { q: 0, rec: 0, luc: 0 }, stock = p.active ? p.stock : 0, cob = v.q > 0 ? stock / (v.q / dias) : null, pq = Math.min(v.q, stock);
     return { code: p.code, name: p.name, stock, cost: p.cost_price, price: p.sale_price, margem: p.sale_price > 0 ? (p.sale_price - p.cost_price) / p.sale_price * 100 : 0,
       q: v.q, rec: v.rec, luc: v.luc, cob, pq, prec: pq * p.sale_price, pluc: pq * (p.sale_price - p.cost_price), pot: stock * p.sale_price, custo: stock * p.cost_price,
